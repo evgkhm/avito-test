@@ -37,6 +37,76 @@ type UserReservationRevenue struct {
 	Cost      float64 `json:"cost"`
 }
 
+// revenue метод признания выручки – списывает из резерва
+func (userDataFromRequest UserReservationRevenue) revenue(db *sql.DB, w http.ResponseWriter) error {
+	dataFromDB := UserReservationRevenue{0, 0, 0, 0}
+	//Метод для получения всех данных из DB
+	rows, err := db.Query("select * from reservation") //начинаем парсить таблицу c резервациями
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+
+	//Считывание данных
+	for rows.Next() {
+		err := rows.Scan(&dataFromDB.Id, &dataFromDB.IdService, &dataFromDB.IdOrder, &dataFromDB.Cost) //
+		if err != nil {
+			fmt.Println(err)
+			continue
+		} else {
+			//Вывод текущих данных
+			//fmt.Fprintf(w, "у пользователя с id %d было %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
+
+			//Проверка, что есть такой пользователь в таблице зарезервированных
+			if userDataFromRequest.Id != dataFromDB.Id {
+				fmt.Fprintln(w, "нет такого пользователя, запрос отклонен")
+			} else if userDataFromRequest.IdOrder != dataFromDB.IdOrder {
+				fmt.Fprintln(w, "ID заказа не совпадает, запрос отклонен")
+			} else if userDataFromRequest.IdService != dataFromDB.IdService {
+				fmt.Fprintln(w, "ID услуги не совпадает, запрос отклонен")
+			} else if userDataFromRequest.Cost != dataFromDB.Cost {
+				fmt.Fprintln(w, "сумма не совпадает, запрос отклонен")
+			} else {
+				//Строка с sql запросом на обновление данных в основной таблице usr
+				//sqlStr := `update "usr" set "balance"=$1 where "id"=$2`
+				//Выполнение sql запроса
+				//_, err := db.Exec(sqlStr, newBalance, dataFromDB.Id)
+				//if err != nil {
+				//	panic(err)
+				//}
+
+				//Строка с sql запросом на добавление данных в таблицу revenue
+				/*sqlStr = `insert into "reservation" (id, id_service, id_order, cost) values (
+				$1,$2,$3,$4)`*/
+				sqlStr := `insert into "revenue" values ($1,$2,$3,$4)`
+				_, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.IdService, userDataFromRequest.IdOrder, userDataFromRequest.Cost)
+				if err != nil {
+					panic(err)
+				}
+
+				//Удаление строки резервации из таблицы reservation
+				sqlStr = `delete from "reservation" where id = $1`
+				_, err = db.Exec(sqlStr, userDataFromRequest.Id)
+				if err != nil {
+					panic(err)
+				}
+
+				//Вывод обновленных данных
+				//Метод для получения обновленных данных из DB
+				row := db.QueryRow("select * from revenue where id = $1", dataFromDB.Id)
+				if err != nil {
+					panic(err)
+				}
+				//Считывание данных
+				err = row.Scan(&dataFromDB.Id, &dataFromDB.IdOrder, &dataFromDB.IdService, &dataFromDB.Cost)
+				fmt.Fprintf(w, "признание выручки успешно, у пользователя с id %d списали %.2f руб с резерва\n", userDataFromRequest.Id, userDataFromRequest.Cost)
+
+			}
+		}
+	}
+	return err
+}
+
 // reservation метод резервирования средств с основного баланса на отдельном счете
 func (userDataFromRequest UserReservationRevenue) reservation(db *sql.DB, w http.ResponseWriter) error {
 	dataFromDB := User{0, 0, ""}
@@ -55,7 +125,7 @@ func (userDataFromRequest UserReservationRevenue) reservation(db *sql.DB, w http
 			continue
 		} else {
 			//Проверяем что id который ввели совпадает с тем, что есть в DB
-			if userDataFromRequest.Id == dataFromDB.Id {
+			if userDataFromRequest.Id == dataFromDB.Id { //TODO: перемесить в другое место!!!
 				//Вывод текущих данных
 				//fmt.Fprintf(w, "у пользователя с id %d было %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
 				//Определение нового баланса
@@ -233,7 +303,34 @@ func main() {
 
 	//Создание хэндла для получения баланса пользователя
 	listenRequestGetBalance(db)
+
+	//Создание хэндла для признания выручки пользователя
+	listenRequestRevenue(db)
 	select {}
+}
+
+// listenRequestReservation метод для получения HTTP запроса для резервирования средств
+func listenRequestRevenue(db *sql.DB) {
+	//Хэндл для начисления и списания
+	http.HandleFunc("/revenue", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			var userFromRequest UserReservationRevenue
+			body, err := ioutil.ReadAll(r.Body) //можно создать отдельную функцию для обоих хэндлов
+			if err != nil {
+				panic(err)
+			}
+			err = json.Unmarshal(body, &userFromRequest)
+			if err != nil {
+				io.WriteString(w, "ошибка, при парсинге данных, отмена запроса\n")
+				return
+			}
+			err = userFromRequest.revenue(db, w)
+			if err != nil {
+				io.WriteString(w, "ошибка, при выполнении резервировании средств")
+				return
+			}
+		}
+	})
 }
 
 // listenRequestReservation метод для получения HTTP запроса для резервирования средств
