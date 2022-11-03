@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS usr;
+
+DROP TABLE IF EXISTS reservation;
+
+DROP TABLE IF EXISTS revenue;
