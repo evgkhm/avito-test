@@ -10,6 +10,9 @@ services:
       - POSTGRES_PASSWORD=admin
       - POSTGRES_USER=admin
       - POSTGRES_DB=users
+      #- POSTGRES_PASSWORD=postgres
+      #- POSTGRES_USER=postgres
+      #- POSTGRES_DB=postgres
     image: postgres:15.0-alpine3.16
     #volumes:
     #  - pg-data:/var/lib/postgresql/data
@@ -23,5 +26,6 @@ services:
       - "8080:8080"  #"8000:8000"
     depends_on:
       - postgres
-    environment:
-      - DB_PASSWORD=admin
+    #environment:
+      #- DB_PASSWORD=admin
+      #- DB_PASSWORD=postgres

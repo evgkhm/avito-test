@@ -280,7 +280,9 @@ func main() {
 	startHttpServer(httpServerExitDone)
 
 	//Строка с логином и паролем к БД
-	connStr := "user=postgres password=admin dbname=users sslmode=disable"
+	connStr := "user=admin password=admin dbname=users sslmode=disable"
+	//connStr := "user=postgres password=admin dbname=users sslmode=disable"
+	//connStr := "user=postgres password=postgres dbname=postgres sslmode=disable"
 	//Соединение с БД
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
