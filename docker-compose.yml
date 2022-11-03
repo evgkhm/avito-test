@@ -1,0 +1,27 @@
+version: '3.5'
+
+services:
+  postgres:
+    container_name: postgres
+    restart: always
+    ports:
+      - "5436:5432" #"5438:5432"
+    environment:
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_USER=admin
+      - POSTGRES_DB=users
+    image: postgres:15.0-alpine3.16
+    #volumes:
+    #  - pg-data:/var/lib/postgresql/data
+
+  main:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    command: ./main
+    ports:
+      - "8080:8080"  #"8000:8000"
+    depends_on:
+      - postgres
+    environment:
+      - DB_PASSWORD=admin
