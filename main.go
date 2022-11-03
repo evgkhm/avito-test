@@ -4,16 +4,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	_ "github.com/lib/pq"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
 	"sync"
-	"time"
-
-	_ "github.com/lib/pq"
-	"github.com/matperez/go-cbr-client"
 )
 
 // User структура для записи/чтения данных с БД
@@ -22,13 +19,6 @@ type User struct {
 	Balance float64 `json:"balance"`
 	Name    string  `json:"name"`
 }
-
-// UserToUser структура для перевода средств от пользователя к пользователю
-/*type UserToUser struct {
-	IdWhoTransfer int     `json:"idWhoTransfer"`
-	IdWhoReceive  int     `json:"idWhoReceive"`
-	Balance       float64 `json:"balance"`
-}*/
 
 type UserReservationRevenue struct {
 	Id        int     `json:"id"`
@@ -218,50 +208,20 @@ func (userDataFromRequest User) sum(db *sql.DB, w http.ResponseWriter) error {
 }
 
 // getBalance метод для получения текущего баланса пользователя в БД и вывод обратной связи
-func (userDataFromRequest User) getBalance(db *sql.DB, id int, w http.ResponseWriter, currency string) error {
+func getBalance(db *sql.DB, id int, w http.ResponseWriter) error {
 	dataFromDB := User{0, 0, ""}
-	//Получение всех данных из DB
-	rows, err := db.Query("select * from usr")
-	if err != nil {
-		panic(err)
-	}
-	defer rows.Close()
 
-	//Считывание данных
-	for rows.Next() {
-		err := rows.Scan(&dataFromDB.Id, &dataFromDB.Balance, &dataFromDB.Name) //
-		if err != nil {
-			fmt.Println(err)
-			continue
+	var err error
+	if err = db.QueryRow("select * from usr where id = $1", id).Scan(&err); err != nil {
+		if err == sql.ErrNoRows { //пользователя нет в БД
+			fmt.Fprintf(w, "нет данных о id %d ", id)
 		} else {
-			//Проверяем что id который ввели совпадает с тем, что есть в DB
-			if id == dataFromDB.Id {
-				//Метод для получения обновленных данных из DB
-				row := db.QueryRow("select * from usr where id = $1", dataFromDB.Id)
-				if err != nil {
-					panic(err)
-				}
-				//Считывание данных
-				err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance, &dataFromDB.Name)
-
-				//Доп. задание 1: конвертация баланса в доллары
-				if currency == "USD" {
-					client := cbr.NewClient()
-					rate, err := client.GetRate("USD", time.Now())
-					if err != nil {
-						panic(err)
-					}
-					balanceUSD := dataFromDB.Balance / rate
-					fmt.Fprintf(w, "у пользователя с id %d  %.2f $", dataFromDB.Id, balanceUSD)
-				} else {
-					fmt.Fprintf(w, "у пользователя с id %d  %.2f руб", dataFromDB.Id, dataFromDB.Balance)
-				}
-			} else {
-				fmt.Fprintf(w, "нет данных о id %d ", id)
-			}
+			row := db.QueryRow("select * from usr where id = $1", id)
+			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance, &dataFromDB.Name)
+			fmt.Fprintf(w, "у пользователя с id %d  %.2f руб", dataFromDB.Id, dataFromDB.Balance)
 		}
-
 	}
+
 	return err
 }
 
@@ -371,16 +331,13 @@ func listenRequestGetBalance(db *sql.DB) {
 	//Хэндл для начисления и списания
 	http.HandleFunc("/gb", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
-			var userFromRequest User
 			//Получение id с запроса
-			id := r.URL.Query().Get("id")
-			currency := r.URL.Query().Get("currency")
-			iD, err := strconv.Atoi(id)
+			id, err := strconv.Atoi(r.URL.Query().Get("id"))
 			if err != nil {
 				io.WriteString(w, "ошибка, при парсинге данных, отмена запроса")
 				return
 			}
-			err = userFromRequest.getBalance(db, iD, w, currency)
+			err = getBalance(db, id, w)
 			if err != nil {
 				io.WriteString(w, "ошибка, при получении баланса пользователя")
 				return
