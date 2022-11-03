@@ -171,35 +171,29 @@ func (userDataFromRequest UserReservationRevenue) reservation(db *sql.DB, w http
 	return err
 }
 
-// sum метод для списания/начисления средств в БД и вывод обратной связи
+// sum метод для начисления средств в БД
 func (userDataFromRequest User) sum(db *sql.DB, w http.ResponseWriter) error {
 	dataFromDB := User{0, 0, ""}
-	//Метод для получения всех данных из DB
-
-	var enough bool
-	//ищем нужны ID из БД
-	if err := db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id).Scan(&enough); err != nil {
-		if err == sql.ErrNoRows {
+	var err error
+	//ищем нужный ID из БД
+	if err = db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id).Scan(&err); err != nil {
+		if err == sql.ErrNoRows { //пользователя нет в БД, нужно добавить
 			//Строка с sql запросом на добавление данных в таблицу usr
 			sqlStr := `insert into "usr" values ($1,$2,$3)`
 			_, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.Balance, userDataFromRequest.Name)
 			if err != nil {
 				panic(err)
 			}
-			//Вывод обновленных данных
-			//Метод для получения обновленных данных из DB
+			//Получение обновленных данных из DB
 			row := db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id)
-			if err != nil {
-				panic(err)
-			}
+
 			//Считывание данных
 			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance, &dataFromDB.Name)
 			fmt.Fprintf(w, "успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
-		} else {
+		} else { //пользователь есть в БД, нужно обновить баланс
 			row := db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id)
-			row.Scan(&dataFromDB.Id, &dataFromDB.Balance, &dataFromDB.Name)
+			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance, &dataFromDB.Name)
 			if userDataFromRequest.Balance < 0 {
-				//newBalance = dataFromDB.Balance
 				fmt.Fprintln(w, "попытка начислить отрицательное число, запрос отклонен")
 			} else if userDataFromRequest.Balance < 0.1 {
 				fmt.Fprintln(w, "попытка начислить число меньше копейки, запрос отклонен")
@@ -208,81 +202,19 @@ func (userDataFromRequest User) sum(db *sql.DB, w http.ResponseWriter) error {
 				newBalance := dataFromDB.Balance + userDataFromRequest.Balance
 				sqlStr := `update "usr" set "balance"=$1 where "id"=$2`
 				//Выполнение sql запроса
-				_, err := db.Exec(sqlStr, newBalance, dataFromDB.Id)
+				_, err = db.Exec(sqlStr, newBalance, dataFromDB.Id)
 				if err != nil {
 					panic(err)
 				}
-
-				//Вывод обновленных данных
-				//Метод для получения обновленных данных из DB
-				row := db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id)
-				if err != nil {
-					panic(err)
-				}
+				//Получение обновленных данных из DB
+				row = db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id)
 				//Считывание данных
 				err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance, &dataFromDB.Name)
 				fmt.Fprintf(w, "успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
 			}
 		}
 	}
-
-	//Считывание данных
-	/*for rows.Next() {
-		err := rows.Scan(&dataFromDB.Id, &dataFromDB.Balance, &dataFromDB.Name) //
-		if err != nil {
-			fmt.Println(err)
-			continue
-		} else {
-			//Проверяем что id который ввели совпадает с тем, что есть в DB
-			if userDataFromRequest.Id == dataFromDB.Id {
-				if userDataFromRequest.Balance < 0 {
-					//newBalance = dataFromDB.Balance
-					fmt.Fprintln(w, "попытка начислить отрицательное число, запрос отклонен")
-				} else if userDataFromRequest.Balance < 0.1 {
-					fmt.Fprintln(w, "попытка начислить число меньше копейки, запрос отклонен")
-				} else {
-					//Определение нового баланса
-					newBalance := dataFromDB.Balance + userDataFromRequest.Balance
-					sqlStr := `update "usr" set "balance"=$1 where "id"=$2`
-					//Выполнение sql запроса
-					_, err := db.Exec(sqlStr, newBalance, dataFromDB.Id)
-					if err != nil {
-						panic(err)
-					}
-
-					//Вывод обновленных данных
-					//Метод для получения обновленных данных из DB
-					row := db.QueryRow("select * from usr where id = $1", dataFromDB.Id)
-					if err != nil {
-						panic(err)
-					}
-					//Считывание данных
-					err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance, &dataFromDB.Name)
-					fmt.Fprintf(w, "успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
-				}
-			} else { //пользователя нет в БД, нужно добавить
-				//Строка с sql запросом на добавление данных в таблицу usr
-				sqlStr := `insert into "usr" values ($1,$2,$3)`
-				_, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.Balance, userDataFromRequest.Name)
-				if err != nil {
-					panic(err)
-				}
-
-				//Вывод обновленных данных
-				//Метод для получения обновленных данных из DB
-				row := db.QueryRow("select * from usr where id = $1", dataFromDB.Id)
-				if err != nil {
-					panic(err)
-				}
-				//Считывание данных
-				err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance, &dataFromDB.Name)
-				fmt.Fprintf(w, "успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
-			}
-		}
-
-	}*/
-	//return err
-	return nil //TODO: починить ерр
+	return err
 }
 
 // getBalance метод для получения текущего баланса пользователя в БД и вывод обратной связи
@@ -346,13 +278,6 @@ func main() {
 		panic(err)
 	}
 	defer db.Close()
-
-	/*result, err := db.Exec("insert into usr (id, balance, name) values (2, 10, 'Ivan')")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(result.LastInsertId()) // не поддерживается
-	fmt.Println(result.RowsAffected()) // количество добавленных строк*/
 
 	//Создание хэндла для начисления средств
 	listenRequestSum(db)
