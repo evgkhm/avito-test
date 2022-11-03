@@ -279,12 +279,9 @@ func main() {
 	httpServerExitDone.Add(1)
 	startHttpServer(httpServerExitDone)
 
-	//Строка с логином и паролем к БД
-	connStr := "user=admin password=admin dbname=users sslmode=disable"
-	//connStr := "user=postgres password=admin dbname=users sslmode=disable"
-	//connStr := "user=postgres password=postgres dbname=postgres sslmode=disable"
 	//Соединение с БД
-	db, err := sql.Open("postgres", connStr)
+	db, err := sql.Open("postgres", "postgres://admin:admin@host.docker.internal:5436/users?sslmode=disable")
+
 	if err != nil {
 		panic(err)
 	}
