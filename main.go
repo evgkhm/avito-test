@@ -17,7 +17,6 @@ import (
 type User struct {
 	Id      int     `json:"id"`
 	Balance float64 `json:"balance"`
-	Name    string  `json:"name"`
 }
 
 type UserReservationRevenue struct {
@@ -99,7 +98,7 @@ func (userDataFromRequest UserReservationRevenue) revenue(db *sql.DB, w http.Res
 
 // reservation метод резервирования средств с основного баланса на отдельном счете
 func (userDataFromRequest UserReservationRevenue) reservation(db *sql.DB, w http.ResponseWriter) error {
-	dataFromDB := User{0, 0, ""}
+	dataFromDB := User{0, 0}
 	//Метод для получения всех данных из DB
 	rows, err := db.Query("select * from usr")
 	if err != nil {
@@ -109,7 +108,7 @@ func (userDataFromRequest UserReservationRevenue) reservation(db *sql.DB, w http
 
 	//Считывание данных
 	for rows.Next() {
-		err := rows.Scan(&dataFromDB.Id, &dataFromDB.Balance, &dataFromDB.Name) //
+		err := rows.Scan(&dataFromDB.Id, &dataFromDB.Balance) //
 		if err != nil {
 			fmt.Println(err)
 			continue
@@ -150,7 +149,7 @@ func (userDataFromRequest UserReservationRevenue) reservation(db *sql.DB, w http
 						panic(err)
 					}
 					//Считывание данных
-					err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance, &dataFromDB.Name)
+					err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
 					fmt.Fprintf(w, "резервирование успешено, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
 
 				}
@@ -163,14 +162,14 @@ func (userDataFromRequest UserReservationRevenue) reservation(db *sql.DB, w http
 
 // sum метод для начисления средств в БД
 func (userDataFromRequest User) sum(db *sql.DB, w http.ResponseWriter) error {
-	dataFromDB := User{0, 0, ""}
+	dataFromDB := User{0, 0}
 	var err error
 	//ищем нужный ID из БД
 	if err = db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id).Scan(&err); err != nil {
 		if err == sql.ErrNoRows { //пользователя нет в БД, нужно добавить
 			//Строка с sql запросом на добавление данных в таблицу usr
 			sqlStr := `insert into "usr" values ($1,$2,$3)`
-			_, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.Balance, userDataFromRequest.Name)
+			_, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.Balance)
 			if err != nil {
 				panic(err)
 			}
@@ -178,11 +177,11 @@ func (userDataFromRequest User) sum(db *sql.DB, w http.ResponseWriter) error {
 			row := db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id)
 
 			//Считывание данных
-			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance, &dataFromDB.Name)
+			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
 			fmt.Fprintf(w, "успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
 		} else { //пользователь есть в БД, нужно обновить баланс
 			row := db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id)
-			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance, &dataFromDB.Name)
+			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
 			if userDataFromRequest.Balance < 0 {
 				fmt.Fprintln(w, "попытка начислить отрицательное число, запрос отклонен")
 			} else if userDataFromRequest.Balance < 0.1 {
@@ -199,7 +198,7 @@ func (userDataFromRequest User) sum(db *sql.DB, w http.ResponseWriter) error {
 				//Получение обновленных данных из DB
 				row = db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id)
 				//Считывание данных
-				err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance, &dataFromDB.Name)
+				err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
 				fmt.Fprintf(w, "успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
 			}
 		}
@@ -209,7 +208,7 @@ func (userDataFromRequest User) sum(db *sql.DB, w http.ResponseWriter) error {
 
 // getBalance метод для получения текущего баланса пользователя в БД и вывод обратной связи
 func getBalance(db *sql.DB, id int, w http.ResponseWriter) error {
-	dataFromDB := User{0, 0, ""}
+	dataFromDB := User{0, 0}
 
 	var err error
 	if err = db.QueryRow("select * from usr where id = $1", id).Scan(&err); err != nil {
@@ -217,7 +216,7 @@ func getBalance(db *sql.DB, id int, w http.ResponseWriter) error {
 			fmt.Fprintf(w, "нет данных о id %d ", id)
 		} else {
 			row := db.QueryRow("select * from usr where id = $1", id)
-			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance, &dataFromDB.Name)
+			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
 			fmt.Fprintf(w, "у пользователя с id %d  %.2f руб", dataFromDB.Id, dataFromDB.Balance)
 		}
 	}
