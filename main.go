@@ -29,59 +29,53 @@ type UserReservationRevenue struct {
 // revenue метод признания выручки – списывает из резерва
 func (userDataFromRequest UserReservationRevenue) revenue(db *sql.DB, w http.ResponseWriter) error {
 	dataFromDB := UserReservationRevenue{0, 0, 0, 0}
-	//Метод для получения всех данных из DB
-	rows, err := db.Query("select * from reservation") //начинаем парсить таблицу c резервациями
-	if err != nil {
-		panic(err)
-	}
-	defer rows.Close()
-
-	//Считывание данных
-	for rows.Next() {
-		err := rows.Scan(&dataFromDB.Id, &dataFromDB.IdService, &dataFromDB.IdOrder, &dataFromDB.Cost) //
-		if err != nil {
-			fmt.Println(err)
-			continue
-		} else {
-			//Вывод текущих данных
-			//fmt.Fprintf(w, "у пользователя с id %d было %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
-
-			//Проверка, что есть такой пользователь в таблице зарезервированных
-			if userDataFromRequest.Id != dataFromDB.Id {
-				fmt.Fprintln(w, "нет такого пользователя, запрос отклонен")
-			} else if userDataFromRequest.IdOrder != dataFromDB.IdOrder {
-				fmt.Fprintln(w, "ID заказа не совпадает, запрос отклонен")
-			} else if userDataFromRequest.IdService != dataFromDB.IdService {
-				fmt.Fprintln(w, "ID услуги не совпадает, запрос отклонен")
-			} else if userDataFromRequest.Cost != dataFromDB.Cost {
-				fmt.Fprintln(w, "сумма не совпадает, запрос отклонен")
-			} else {
-
-				sqlStr := `insert into "revenue" values ($1,$2,$3,$4)`
-				_, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.IdService, userDataFromRequest.IdOrder, userDataFromRequest.Cost)
-				if err != nil {
-					panic(err)
-				}
-
-				//Удаление строки резервации из таблицы reservation
-				sqlStr = `delete from "reservation" where id = $1`
-				_, err = db.Exec(sqlStr, userDataFromRequest.Id)
-				if err != nil {
-					panic(err)
-				}
-
-				//Вывод обновленных данных
-				//Метод для получения обновленных данных из DB
-				row := db.QueryRow("select * from revenue where id = $1", dataFromDB.Id)
-				if err != nil {
-					panic(err)
-				}
-				//Считывание данных
-				err = row.Scan(&dataFromDB.Id, &dataFromDB.IdOrder, &dataFromDB.IdService, &dataFromDB.Cost)
-				fmt.Fprintf(w, "признание выручки успешно, у пользователя с id %d списали %.2f руб с резерва\n", userDataFromRequest.Id, userDataFromRequest.Cost)
-
-			}
+	var err error
+	if err = db.QueryRow("select * from reservation where id = $1 and id_service = $2 and id_order = $3 and cost = $4",
+		userDataFromRequest.Id, &userDataFromRequest.IdService, userDataFromRequest.IdOrder, &userDataFromRequest.Cost).Scan(&err); err != nil {
+		//проверка того,что пользователя нет в БД
+		if err == sql.ErrNoRows {
+			fmt.Fprintf(w, "нет данных о id %d ", userDataFromRequest.Id)
+			return err
 		}
+		//получение данных из БД
+		row := db.QueryRow("select * from reservation where id = $1 and id_service = $2 and id_order = $3 and cost = $4",
+			userDataFromRequest.Id, &userDataFromRequest.IdService, userDataFromRequest.IdOrder, &userDataFromRequest.Cost)
+		err = row.Scan(&dataFromDB.Id, &dataFromDB.IdService, &dataFromDB.IdOrder, &dataFromDB.Cost)
+		//Проверка, что есть такой пользователь в таблице зарезервированных
+		if userDataFromRequest.Id != dataFromDB.Id {
+			fmt.Fprintln(w, "нет такого пользователя, запрос отклонен")
+			return err
+		} else if userDataFromRequest.IdOrder != dataFromDB.IdOrder {
+			fmt.Fprintln(w, "ID заказа не совпадает, запрос отклонен")
+			return err
+		} else if userDataFromRequest.IdService != dataFromDB.IdService {
+			fmt.Fprintln(w, "ID услуги не совпадает, запрос отклонен")
+			return err
+		} else if userDataFromRequest.Cost != dataFromDB.Cost {
+			fmt.Fprintln(w, "сумма не совпадает, запрос отклонен")
+			return err
+		}
+		sqlStr := `insert into "revenue" values ($1,$2,$3,$4)`
+		_, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.IdService, userDataFromRequest.IdOrder, userDataFromRequest.Cost)
+		if err != nil {
+			panic(err)
+		}
+
+		//Удаление строки резервации из таблицы reservation
+		sqlStr = `delete from "reservation" where id = $1 and id_service = $2 and id_order = $3 and cost = $4`
+		_, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.IdService, userDataFromRequest.IdOrder, userDataFromRequest.Cost)
+		if err != nil {
+			panic(err)
+		}
+
+		//Метод для получения обновленных данных из DB
+		row = db.QueryRow("select * from revenue where id = $1", dataFromDB.Id)
+		if err != nil {
+			panic(err)
+		}
+		//Считывание данных
+		err = row.Scan(&dataFromDB.Id, &dataFromDB.IdOrder, &dataFromDB.IdService, &dataFromDB.Cost)
+		fmt.Fprintf(w, "признание выручки успешно, у пользователя с id %d списали %.2f руб с резерва\n", userDataFromRequest.Id, userDataFromRequest.Cost)
 	}
 	return err
 }
@@ -93,43 +87,43 @@ func (userDataFromRequest UserReservationRevenue) reservation(db *sql.DB, w http
 	if err = db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id).Scan(&err); err != nil {
 		if err == sql.ErrNoRows { //пользователя нет в БД
 			fmt.Fprintf(w, "нет данных о id %d ", userDataFromRequest.Id)
-		} else {
-			//получение данных из БД
-			row := db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id)
-			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
-
-			newBalance := dataFromDB.Balance - userDataFromRequest.Cost
-			//Проверка того, что нельзя уйти в минус
-			if newBalance < 0 {
-				fmt.Fprintln(w, "попытка уйти в минус, запрос на списания отклонен")
-			} else {
-				//Добавление в таблицу reservation данных
-				sqlStr := `insert into "reservation" values ($1,$2,$3,$4) on conflict do nothing`
-				var res sql.Result
-				res, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.IdService, userDataFromRequest.IdOrder, userDataFromRequest.Cost)
-				if err != nil {
-					panic(err)
-				} else if n, _ := res.RowsAffected(); n != 1 { //нет добавления в таблицу коллизия данных
-					io.WriteString(w, "ошибка, при выполнении резервировании средств, коллизия данных")
-					return err
-				}
-
-				//Строка с sql запросом на обновление данных в основной таблице usr
-				sqlStr = `update "usr" set "balance"=$1 where "id"=$2`
-				_, err = db.Exec(sqlStr, newBalance, dataFromDB.Id)
-				if err != nil {
-					panic(err)
-				}
-				//вывод обновленных данных из таблицы usr
-				row = db.QueryRow("select * from usr where id = $1", dataFromDB.Id)
-				if err != nil {
-					panic(err)
-				}
-				//Считывание данных
-				err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
-				fmt.Fprintf(w, "резервирование успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
-			}
+			return err
 		}
+		//получение данных из БД
+		row := db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id)
+		err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
+
+		newBalance := dataFromDB.Balance - userDataFromRequest.Cost
+		//Проверка того, что нельзя уйти в минус
+		if newBalance < 0 {
+			fmt.Fprintln(w, "попытка уйти в минус, запрос на списания отклонен")
+			return err
+		}
+		//Добавление в таблицу reservation данных
+		sqlStr := `insert into "reservation" values ($1,$2,$3,$4) on conflict do nothing`
+		var res sql.Result
+		res, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.IdService, userDataFromRequest.IdOrder, userDataFromRequest.Cost)
+		if err != nil {
+			panic(err)
+		} else if n, _ := res.RowsAffected(); n != 1 { //нет добавления в таблицу коллизия данных
+			io.WriteString(w, "ошибка, при выполнении резервировании средств, коллизия данных")
+			return err
+		}
+
+		//Строка с sql запросом на обновление данных в основной таблице usr
+		sqlStr = `update "usr" set "balance"=$1 where "id"=$2`
+		_, err = db.Exec(sqlStr, newBalance, dataFromDB.Id)
+		if err != nil {
+			panic(err)
+		}
+		//вывод обновленных данных из таблицы usr
+		row = db.QueryRow("select * from usr where id = $1", dataFromDB.Id)
+		if err != nil {
+			panic(err)
+		}
+		//Считывание данных
+		err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
+		fmt.Fprintf(w, "резервирование успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
 	}
 	return err
 }
