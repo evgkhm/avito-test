@@ -103,20 +103,23 @@ func (userDataFromRequest UserReservationRevenue) reservation(db *sql.DB, w http
 			if newBalance < 0 {
 				fmt.Fprintln(w, "попытка уйти в минус, запрос на списания отклонен")
 			} else {
+				//Добавление в таблицу reservation данных
+				sqlStr := `insert into "reservation" values ($1,$2,$3,$4) on conflict do nothing`
+				var res sql.Result
+				res, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.IdService, userDataFromRequest.IdOrder, userDataFromRequest.Cost)
+				if err != nil {
+					panic(err)
+				} else if n, _ := res.RowsAffected(); n != 1 { //нет добавления в таблицу коллизия данных
+					io.WriteString(w, "ошибка, при выполнении резервировании средств, коллизия данных")
+					return err
+				}
+
 				//Строка с sql запросом на обновление данных в основной таблице usr
-				sqlStr := `update "usr" set "balance"=$1 where "id"=$2`
+				sqlStr = `update "usr" set "balance"=$1 where "id"=$2`
 				_, err = db.Exec(sqlStr, newBalance, dataFromDB.Id)
 				if err != nil {
 					panic(err)
 				}
-
-				//Добавление в таблицу reservation данных
-				sqlStr = `insert into "reservation" values ($1,$2,$3,$4)`
-				_, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.IdService, userDataFromRequest.IdOrder, userDataFromRequest.Cost)
-				if err != nil {
-					panic(err)
-				}
-
 				//вывод обновленных данных из таблицы usr
 				row = db.QueryRow("select * from usr where id = $1", dataFromDB.Id)
 				if err != nil {
@@ -139,7 +142,7 @@ func (userDataFromRequest User) sum(db *sql.DB, w http.ResponseWriter) error {
 	if err = db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id).Scan(&err); err != nil {
 		if err == sql.ErrNoRows { //пользователя нет в БД, нужно добавить
 			//Строка с sql запросом на добавление данных в таблицу usr
-			sqlStr := `insert into "usr" values ($1,$2,$3)`
+			sqlStr := `insert into "usr" values ($1,$2)`
 			_, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.Balance)
 			if err != nil {
 				panic(err)
