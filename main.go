@@ -27,73 +27,73 @@ type UserReservationRevenue struct {
 }
 
 // revenue метод признания выручки – списывает из резерва
-func (userDataFromRequest UserReservationRevenue) revenue(db *sql.DB, w http.ResponseWriter) error {
-	dataFromDB := UserReservationRevenue{0, 0, 0, 0}
+func (dataRequest UserReservationRevenue) revenue(db *sql.DB, w http.ResponseWriter) error {
+	dataDB := UserReservationRevenue{0, 0, 0, 0}
 	var err error
 	if err = db.QueryRow("select * from reservation where id = $1 and id_service = $2 and id_order = $3 and cost = $4",
-		userDataFromRequest.Id, &userDataFromRequest.IdService, userDataFromRequest.IdOrder, &userDataFromRequest.Cost).Scan(&err); err != nil {
+		dataRequest.Id, &dataRequest.IdService, dataRequest.IdOrder, &dataRequest.Cost).Scan(&err); err != nil {
 		//проверка того,что пользователя нет в БД
 		if err == sql.ErrNoRows {
-			fmt.Fprintf(w, "нет данных о id %d ", userDataFromRequest.Id)
+			fmt.Fprintf(w, "нет данных о id %d ", dataRequest.Id)
 			return err
 		}
 		//получение данных из БД
 		row := db.QueryRow("select * from reservation where id = $1 and id_service = $2 and id_order = $3 and cost = $4",
-			userDataFromRequest.Id, &userDataFromRequest.IdService, userDataFromRequest.IdOrder, &userDataFromRequest.Cost)
-		err = row.Scan(&dataFromDB.Id, &dataFromDB.IdService, &dataFromDB.IdOrder, &dataFromDB.Cost)
+			dataRequest.Id, &dataRequest.IdService, dataRequest.IdOrder, &dataRequest.Cost)
+		err = row.Scan(&dataDB.Id, &dataDB.IdService, &dataDB.IdOrder, &dataDB.Cost)
 		//Проверка, что есть такой пользователь в таблице зарезервированных
-		if userDataFromRequest.Id != dataFromDB.Id {
+		if dataRequest.Id != dataDB.Id {
 			fmt.Fprintln(w, "нет такого пользователя, запрос отклонен")
 			return err
-		} else if userDataFromRequest.IdOrder != dataFromDB.IdOrder {
+		} else if dataRequest.IdOrder != dataDB.IdOrder {
 			fmt.Fprintln(w, "ID заказа не совпадает, запрос отклонен")
 			return err
-		} else if userDataFromRequest.IdService != dataFromDB.IdService {
+		} else if dataRequest.IdService != dataDB.IdService {
 			fmt.Fprintln(w, "ID услуги не совпадает, запрос отклонен")
 			return err
-		} else if userDataFromRequest.Cost != dataFromDB.Cost {
+		} else if dataRequest.Cost != dataDB.Cost {
 			fmt.Fprintln(w, "сумма не совпадает, запрос отклонен")
 			return err
 		}
 		sqlStr := `insert into "revenue" values ($1,$2,$3,$4)`
-		_, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.IdService, userDataFromRequest.IdOrder, userDataFromRequest.Cost)
+		_, err = db.Exec(sqlStr, dataRequest.Id, dataRequest.IdService, dataRequest.IdOrder, dataRequest.Cost)
 		if err != nil {
 			panic(err)
 		}
 
 		//Удаление строки резервации из таблицы reservation
 		sqlStr = `delete from "reservation" where id = $1 and id_service = $2 and id_order = $3 and cost = $4`
-		_, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.IdService, userDataFromRequest.IdOrder, userDataFromRequest.Cost)
+		_, err = db.Exec(sqlStr, dataRequest.Id, dataRequest.IdService, dataRequest.IdOrder, dataRequest.Cost)
 		if err != nil {
 			panic(err)
 		}
 
 		//Метод для получения обновленных данных из DB
-		row = db.QueryRow("select * from revenue where id = $1", dataFromDB.Id)
+		row = db.QueryRow("select * from revenue where id = $1", dataDB.Id)
 		if err != nil {
 			panic(err)
 		}
 		//Считывание данных
-		err = row.Scan(&dataFromDB.Id, &dataFromDB.IdOrder, &dataFromDB.IdService, &dataFromDB.Cost)
-		fmt.Fprintf(w, "признание выручки успешно, у пользователя с id %d списали %.2f руб с резерва\n", userDataFromRequest.Id, userDataFromRequest.Cost)
+		err = row.Scan(&dataDB.Id, &dataDB.IdOrder, &dataDB.IdService, &dataDB.Cost)
+		fmt.Fprintf(w, "признание выручки успешно, у пользователя с id %d списали %.2f руб с резерва\n", dataRequest.Id, dataRequest.Cost)
 	}
 	return err
 }
 
 // reservation метод резервирования средств с основного баланса на отдельном счете
-func (userDataFromRequest UserReservationRevenue) reservation(db *sql.DB, w http.ResponseWriter) error {
+func (dataRequest UserReservationRevenue) reservation(db *sql.DB, w http.ResponseWriter) error {
 	dataFromDB := User{0, 0}
 	var err error
-	if err = db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id).Scan(&err); err != nil {
+	if err = db.QueryRow("select * from usr where id = $1", dataRequest.Id).Scan(&err); err != nil {
 		if err == sql.ErrNoRows { //пользователя нет в БД
-			fmt.Fprintf(w, "нет данных о id %d ", userDataFromRequest.Id)
+			fmt.Fprintf(w, "нет данных о id %d ", dataRequest.Id)
 			return err
 		}
 		//получение данных из БД
-		row := db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id)
+		row := db.QueryRow("select * from usr where id = $1", dataRequest.Id)
 		err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
 
-		newBalance := dataFromDB.Balance - userDataFromRequest.Cost
+		newBalance := dataFromDB.Balance - dataRequest.Cost
 		//Проверка того, что нельзя уйти в минус
 		if newBalance < 0 {
 			fmt.Fprintln(w, "попытка уйти в минус, запрос на списания отклонен")
@@ -102,7 +102,7 @@ func (userDataFromRequest UserReservationRevenue) reservation(db *sql.DB, w http
 		//Добавление в таблицу reservation данных
 		sqlStr := `insert into "reservation" values ($1,$2,$3,$4) on conflict do nothing`
 		var res sql.Result
-		res, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.IdService, userDataFromRequest.IdOrder, userDataFromRequest.Cost)
+		res, err = db.Exec(sqlStr, dataRequest.Id, dataRequest.IdService, dataRequest.IdOrder, dataRequest.Cost)
 		if err != nil {
 			panic(err)
 		} else if n, _ := res.RowsAffected(); n != 1 { //нет добавления в таблицу коллизия данных
