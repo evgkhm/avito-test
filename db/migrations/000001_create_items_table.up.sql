@@ -5,14 +5,14 @@ CREATE TABLE IF NOT EXISTS usr(
 );
 
 CREATE TABLE IF NOT EXISTS reservation(
-  id INTEGER PRIMARY KEY,
+  id INTEGER,
   id_service INTEGER,
   id_order INTEGER,
   cost DECIMAL
 );
 
 CREATE TABLE IF NOT EXISTS revenue(
-  id INTEGER PRIMARY KEY,
+  id INTEGER,
   id_service INTEGER,
   id_order INTEGER,
   cost DECIMAL

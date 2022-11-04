@@ -56,17 +56,7 @@ func (userDataFromRequest UserReservationRevenue) revenue(db *sql.DB, w http.Res
 			} else if userDataFromRequest.Cost != dataFromDB.Cost {
 				fmt.Fprintln(w, "сумма не совпадает, запрос отклонен")
 			} else {
-				//Строка с sql запросом на обновление данных в основной таблице usr
-				//sqlStr := `update "usr" set "balance"=$1 where "id"=$2`
-				//Выполнение sql запроса
-				//_, err := db.Exec(sqlStr, newBalance, dataFromDB.Id)
-				//if err != nil {
-				//	panic(err)
-				//}
 
-				//Строка с sql запросом на добавление данных в таблицу revenue
-				/*sqlStr = `insert into "reservation" (id, id_service, id_order, cost) values (
-				$1,$2,$3,$4)`*/
 				sqlStr := `insert into "revenue" values ($1,$2,$3,$4)`
 				_, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.IdService, userDataFromRequest.IdOrder, userDataFromRequest.Cost)
 				if err != nil {
@@ -99,62 +89,43 @@ func (userDataFromRequest UserReservationRevenue) revenue(db *sql.DB, w http.Res
 // reservation метод резервирования средств с основного баланса на отдельном счете
 func (userDataFromRequest UserReservationRevenue) reservation(db *sql.DB, w http.ResponseWriter) error {
 	dataFromDB := User{0, 0}
-	//Метод для получения всех данных из DB
-	rows, err := db.Query("select * from usr")
-	if err != nil {
-		panic(err)
-	}
-	defer rows.Close()
-
-	//Считывание данных
-	for rows.Next() {
-		err := rows.Scan(&dataFromDB.Id, &dataFromDB.Balance) //
-		if err != nil {
-			fmt.Println(err)
-			continue
+	var err error
+	if err = db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id).Scan(&err); err != nil {
+		if err == sql.ErrNoRows { //пользователя нет в БД
+			fmt.Fprintf(w, "нет данных о id %d ", userDataFromRequest.Id)
 		} else {
-			//Проверяем что id который ввели совпадает с тем, что есть в DB
-			if userDataFromRequest.Id == dataFromDB.Id { //TODO: перемесить в другое место!!!
-				//Вывод текущих данных
-				//fmt.Fprintf(w, "у пользователя с id %d было %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
-				//Определение нового баланса
-				newBalance := dataFromDB.Balance - userDataFromRequest.Cost
+			//получение данных из БД
+			row := db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id)
+			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
 
-				//Проверка того, что нельзя уйти в минус
-				if newBalance < 0 {
-					newBalance = dataFromDB.Balance
-					fmt.Fprintln(w, "попытка уйти в минус, запрос на списания отклонен")
-				} else {
-					//Строка с sql запросом на обновление данных в основной таблице usr
-					sqlStr := `update "usr" set "balance"=$1 where "id"=$2`
-					//Выполнение sql запроса
-					_, err := db.Exec(sqlStr, newBalance, dataFromDB.Id)
-					if err != nil {
-						panic(err)
-					}
-
-					//Строка с sql запросом на добавление данных в таблице reservation
-					/*sqlStr = `insert into "reservation" (id, id_service, id_order, cost) values (
-					$1,$2,$3,$4)`*/
-					sqlStr = `insert into "reservation" values ($1,$2,$3,$4)`
-					_, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.IdService, userDataFromRequest.IdOrder, userDataFromRequest.Cost)
-					if err != nil {
-						panic(err)
-					}
-
-					//Вывод обновленных данных
-					//Метод для получения обновленных данных из DB
-					row := db.QueryRow("select * from usr where id = $1", dataFromDB.Id)
-					if err != nil {
-						panic(err)
-					}
-					//Считывание данных
-					err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
-					fmt.Fprintf(w, "резервирование успешено, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
-
+			newBalance := dataFromDB.Balance - userDataFromRequest.Cost
+			//Проверка того, что нельзя уйти в минус
+			if newBalance < 0 {
+				fmt.Fprintln(w, "попытка уйти в минус, запрос на списания отклонен")
+			} else {
+				//Строка с sql запросом на обновление данных в основной таблице usr
+				sqlStr := `update "usr" set "balance"=$1 where "id"=$2`
+				_, err = db.Exec(sqlStr, newBalance, dataFromDB.Id)
+				if err != nil {
+					panic(err)
 				}
-			}
 
+				//Добавление в таблицу reservation данных
+				sqlStr = `insert into "reservation" values ($1,$2,$3,$4)`
+				_, err = db.Exec(sqlStr, userDataFromRequest.Id, userDataFromRequest.IdService, userDataFromRequest.IdOrder, userDataFromRequest.Cost)
+				if err != nil {
+					panic(err)
+				}
+
+				//вывод обновленных данных из таблицы usr
+				row = db.QueryRow("select * from usr where id = $1", dataFromDB.Id)
+				if err != nil {
+					panic(err)
+				}
+				//Считывание данных
+				err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
+				fmt.Fprintf(w, "резервирование успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
+			}
 		}
 	}
 	return err
