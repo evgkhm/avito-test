@@ -26,6 +26,12 @@ type UserReservationRevenue struct {
 	Cost      float64 `json:"cost"`
 }
 
+type UserReport struct {
+	UserData UserReservationRevenue
+	Year     int `json:"year"`
+	Month    int `json:"month"`
+}
+
 // revenue метод признания выручки – списывает из резерва
 func (dataRequest UserReservationRevenue) revenue(db *sql.DB, w http.ResponseWriter) error {
 	dataDB := UserReservationRevenue{0, 0, 0, 0}
@@ -82,7 +88,7 @@ func (dataRequest UserReservationRevenue) revenue(db *sql.DB, w http.ResponseWri
 
 // reservation метод резервирования средств с основного баланса на отдельном счете
 func (dataRequest UserReservationRevenue) reservation(db *sql.DB, w http.ResponseWriter) error {
-	dataFromDB := User{0, 0}
+	dataDB := User{0, 0}
 	var err error
 	if err = db.QueryRow("select * from usr where id = $1", dataRequest.Id).Scan(&err); err != nil {
 		if err == sql.ErrNoRows { //пользователя нет в БД
@@ -91,9 +97,9 @@ func (dataRequest UserReservationRevenue) reservation(db *sql.DB, w http.Respons
 		}
 		//получение данных из БД
 		row := db.QueryRow("select * from usr where id = $1", dataRequest.Id)
-		err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
+		err = row.Scan(&dataDB.Id, &dataDB.Balance)
 
-		newBalance := dataFromDB.Balance - dataRequest.Cost
+		newBalance := dataDB.Balance - dataRequest.Cost
 		//Проверка того, что нельзя уйти в минус
 		if newBalance < 0 {
 			_, err = fmt.Fprintln(w, "попытка уйти в минус, запрос на списания отклонен")
@@ -112,25 +118,25 @@ func (dataRequest UserReservationRevenue) reservation(db *sql.DB, w http.Respons
 
 		//Строка с sql запросом на обновление данных в основной таблице usr
 		sqlStr = `update "usr" set "balance"=$1 where "id"=$2`
-		_, err = db.Exec(sqlStr, newBalance, dataFromDB.Id)
+		_, err = db.Exec(sqlStr, newBalance, dataDB.Id)
 		if err != nil {
 			panic(err)
 		}
 		//вывод обновленных данных из таблицы usr
-		row = db.QueryRow("select * from usr where id = $1", dataFromDB.Id)
+		row = db.QueryRow("select * from usr where id = $1", dataDB.Id)
 		if err != nil {
 			panic(err)
 		}
 		//Считывание данных
-		err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
-		_, err = fmt.Fprintf(w, "резервирование успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
+		err = row.Scan(&dataDB.Id, &dataDB.Balance)
+		_, err = fmt.Fprintf(w, "резервирование успешно, у пользователя с id %d стало %.2f руб\n", dataDB.Id, dataDB.Balance)
 	}
 	return err
 }
 
 // sum метод для начисления средств в БД
 func (userDataFromRequest User) sum(db *sql.DB, w http.ResponseWriter) error {
-	dataFromDB := User{0, 0}
+	dataDB := User{0, 0}
 	var err error
 	//ищем нужный ID из БД
 	if err = db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id).Scan(&err); err != nil {
@@ -145,29 +151,29 @@ func (userDataFromRequest User) sum(db *sql.DB, w http.ResponseWriter) error {
 			row := db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id)
 
 			//Считывание данных
-			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
-			_, err = fmt.Fprintf(w, "успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
+			err = row.Scan(&dataDB.Id, &dataDB.Balance)
+			_, err = fmt.Fprintf(w, "успешно, у пользователя с id %d стало %.2f руб\n", dataDB.Id, dataDB.Balance)
 		} else { //пользователь есть в БД, нужно обновить баланс
 			row := db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id)
-			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
+			err = row.Scan(&dataDB.Id, &dataDB.Balance)
 			if userDataFromRequest.Balance < 0 {
 				_, err = fmt.Fprintln(w, "попытка начислить отрицательное число, запрос отклонен")
 			} else if userDataFromRequest.Balance < 0.1 {
 				_, err = fmt.Fprintln(w, "попытка начислить число меньше копейки, запрос отклонен")
 			} else {
 				//Определение нового баланса
-				newBalance := dataFromDB.Balance + userDataFromRequest.Balance
+				newBalance := dataDB.Balance + userDataFromRequest.Balance
 				sqlStr := `update "usr" set "balance"=$1 where "id"=$2`
 				//Выполнение sql запроса
-				_, err = db.Exec(sqlStr, newBalance, dataFromDB.Id)
+				_, err = db.Exec(sqlStr, newBalance, dataDB.Id)
 				if err != nil {
 					panic(err)
 				}
 				//Получение обновленных данных из DB
 				row = db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id)
 				//Считывание данных
-				err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
-				_, err = fmt.Fprintf(w, "успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
+				err = row.Scan(&dataDB.Id, &dataDB.Balance)
+				_, err = fmt.Fprintf(w, "успешно, у пользователя с id %d стало %.2f руб\n", dataDB.Id, dataDB.Balance)
 			}
 		}
 	}
@@ -176,16 +182,32 @@ func (userDataFromRequest User) sum(db *sql.DB, w http.ResponseWriter) error {
 
 // getBalance метод для получения текущего баланса пользователя в БД и вывод обратной связи
 func getBalance(db *sql.DB, id int, w http.ResponseWriter) error {
-	dataFromDB := User{0, 0}
-
+	dataDB := User{0, 0}
 	var err error
 	if err = db.QueryRow("select * from usr where id = $1", id).Scan(&err); err != nil {
 		if err == sql.ErrNoRows { //пользователя нет в БД
 			_, err = fmt.Fprintf(w, "нет данных о id %d ", id)
 		} else {
 			row := db.QueryRow("select * from usr where id = $1", id)
-			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
-			_, err = fmt.Fprintf(w, "у пользователя с id %d  %.2f руб", dataFromDB.Id, dataFromDB.Balance)
+			err = row.Scan(&dataDB.Id, &dataDB.Balance)
+			_, err = fmt.Fprintf(w, "у пользователя с id %d  %.2f руб", dataDB.Id, dataDB.Balance)
+		}
+	}
+	return err
+}
+
+// getBalance метод для получения текущего баланса пользователя в БД и вывод обратной связи
+func getReport(db *sql.DB, year int, month int, w http.ResponseWriter) error {
+	dataDB := UserReport{}
+
+	var err error
+	if err = db.QueryRow("select extract('year'=$1 from 'curr_date') from revenue", year).Scan(&err); err != nil {
+		if err == sql.ErrNoRows { //данных нет в БД
+			_, err = fmt.Fprintf(w, "нет данных о периоде %d ", year)
+		} else {
+			row := db.QueryRow("select extract('year'=$1 from 'curr_date') from revenue", year)
+			err = row.Scan(&dataDB.UserData, &dataDB.Year)
+			_, err = fmt.Fprintf(w, "за период %d списано %.2f руб", &dataDB.Year, dataDB.UserData.Cost)
 		}
 	}
 
@@ -221,7 +243,46 @@ func main() {
 
 	//Создание хэндла для признания выручки пользователя
 	listenRequestRevenue(db)
+
+	//Создание хэндла для месячного отсчета
+	listenRequestReport(db)
 	select {}
+}
+
+// listenRequestReport метод для получения месячного отсчета
+func listenRequestReport(db *sql.DB) {
+	//Хэндл для отсчета
+	http.HandleFunc("/getReport", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			//Получение года с запроса
+			year, err := strconv.Atoi(r.URL.Query().Get("year"))
+			if err != nil {
+				_, err = io.WriteString(w, "ошибка, при парсинге данных, отмена запроса")
+				return
+			}
+			//Получение месяца
+			month, err := strconv.Atoi(r.URL.Query().Get("month"))
+			if err != nil {
+				_, err = io.WriteString(w, "ошибка, при парсинге данных, отмена запроса")
+				return
+			}
+
+			/*
+				id := r.URL.Query().Get("id")
+				currency := r.URL.Query().Get("currency")
+				iD, err := strconv.Atoi(id)
+				if err != nil {
+					io.WriteString(w, "ошибка, при парсинге данных, отмена запроса")
+					return
+				}
+			*/
+			err = getReport(db, year, month, w)
+			if err != nil {
+				_, err = io.WriteString(w, "ошибка, при получении баланса пользователя")
+				return
+			}
+		}
+	})
 }
 
 // listenRequestReservation метод для получения HTTP запроса для резервирования средств

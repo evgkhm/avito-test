@@ -24,5 +24,6 @@ CREATE TABLE IF NOT EXISTS revenue(
   id INTEGER,
   id_service INTEGER,
   id_order INTEGER,
-  cost DECIMAL
+  cost DECIMAL,
+  curr_date DATE NOT NULL DEFAULT CURRENT_DATE
 );
