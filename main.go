@@ -34,7 +34,7 @@ func (dataRequest UserReservationRevenue) revenue(db *sql.DB, w http.ResponseWri
 		dataRequest.Id, &dataRequest.IdService, dataRequest.IdOrder, &dataRequest.Cost).Scan(&err); err != nil {
 		//проверка того,что пользователя нет в БД
 		if err == sql.ErrNoRows {
-			fmt.Fprintf(w, "нет данных о id %d ", dataRequest.Id)
+			_, err = fmt.Fprintf(w, "нет данных о id %d ", dataRequest.Id)
 			return err
 		}
 		//получение данных из БД
@@ -43,16 +43,16 @@ func (dataRequest UserReservationRevenue) revenue(db *sql.DB, w http.ResponseWri
 		err = row.Scan(&dataDB.Id, &dataDB.IdService, &dataDB.IdOrder, &dataDB.Cost)
 		//Проверка, что есть такой пользователь в таблице зарезервированных
 		if dataRequest.Id != dataDB.Id {
-			fmt.Fprintln(w, "нет такого пользователя, запрос отклонен")
+			_, err = fmt.Fprintln(w, "нет такого пользователя, запрос отклонен")
 			return err
 		} else if dataRequest.IdOrder != dataDB.IdOrder {
-			fmt.Fprintln(w, "ID заказа не совпадает, запрос отклонен")
+			_, err = fmt.Fprintln(w, "ID заказа не совпадает, запрос отклонен")
 			return err
 		} else if dataRequest.IdService != dataDB.IdService {
-			fmt.Fprintln(w, "ID услуги не совпадает, запрос отклонен")
+			_, err = fmt.Fprintln(w, "ID услуги не совпадает, запрос отклонен")
 			return err
 		} else if dataRequest.Cost != dataDB.Cost {
-			fmt.Fprintln(w, "сумма не совпадает, запрос отклонен")
+			_, err = fmt.Fprintln(w, "сумма не совпадает, запрос отклонен")
 			return err
 		}
 		sqlStr := `insert into "revenue" values ($1,$2,$3,$4)`
@@ -75,7 +75,7 @@ func (dataRequest UserReservationRevenue) revenue(db *sql.DB, w http.ResponseWri
 		}
 		//Считывание данных
 		err = row.Scan(&dataDB.Id, &dataDB.IdOrder, &dataDB.IdService, &dataDB.Cost)
-		fmt.Fprintf(w, "признание выручки успешно, у пользователя с id %d списали %.2f руб с резерва\n", dataRequest.Id, dataRequest.Cost)
+		_, err = fmt.Fprintf(w, "признание выручки успешно, у пользователя с id %d списали %.2f руб с резерва\n", dataRequest.Id, dataRequest.Cost)
 	}
 	return err
 }
@@ -86,7 +86,7 @@ func (dataRequest UserReservationRevenue) reservation(db *sql.DB, w http.Respons
 	var err error
 	if err = db.QueryRow("select * from usr where id = $1", dataRequest.Id).Scan(&err); err != nil {
 		if err == sql.ErrNoRows { //пользователя нет в БД
-			fmt.Fprintf(w, "нет данных о id %d ", dataRequest.Id)
+			_, err = fmt.Fprintf(w, "нет данных о id %d ", dataRequest.Id)
 			return err
 		}
 		//получение данных из БД
@@ -96,7 +96,7 @@ func (dataRequest UserReservationRevenue) reservation(db *sql.DB, w http.Respons
 		newBalance := dataFromDB.Balance - dataRequest.Cost
 		//Проверка того, что нельзя уйти в минус
 		if newBalance < 0 {
-			fmt.Fprintln(w, "попытка уйти в минус, запрос на списания отклонен")
+			_, err = fmt.Fprintln(w, "попытка уйти в минус, запрос на списания отклонен")
 			return err
 		}
 		//Добавление в таблицу reservation данных
@@ -106,7 +106,7 @@ func (dataRequest UserReservationRevenue) reservation(db *sql.DB, w http.Respons
 		if err != nil {
 			panic(err)
 		} else if n, _ := res.RowsAffected(); n != 1 { //нет добавления в таблицу коллизия данных
-			io.WriteString(w, "ошибка, при выполнении резервировании средств, коллизия данных")
+			_, err = io.WriteString(w, "ошибка, при выполнении резервировании средств, коллизия данных")
 			return err
 		}
 
@@ -123,7 +123,7 @@ func (dataRequest UserReservationRevenue) reservation(db *sql.DB, w http.Respons
 		}
 		//Считывание данных
 		err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
-		fmt.Fprintf(w, "резервирование успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
+		_, err = fmt.Fprintf(w, "резервирование успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
 	}
 	return err
 }
@@ -146,14 +146,14 @@ func (userDataFromRequest User) sum(db *sql.DB, w http.ResponseWriter) error {
 
 			//Считывание данных
 			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
-			fmt.Fprintf(w, "успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
+			_, err = fmt.Fprintf(w, "успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
 		} else { //пользователь есть в БД, нужно обновить баланс
 			row := db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id)
 			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
 			if userDataFromRequest.Balance < 0 {
-				fmt.Fprintln(w, "попытка начислить отрицательное число, запрос отклонен")
+				_, err = fmt.Fprintln(w, "попытка начислить отрицательное число, запрос отклонен")
 			} else if userDataFromRequest.Balance < 0.1 {
-				fmt.Fprintln(w, "попытка начислить число меньше копейки, запрос отклонен")
+				_, err = fmt.Fprintln(w, "попытка начислить число меньше копейки, запрос отклонен")
 			} else {
 				//Определение нового баланса
 				newBalance := dataFromDB.Balance + userDataFromRequest.Balance
@@ -167,7 +167,7 @@ func (userDataFromRequest User) sum(db *sql.DB, w http.ResponseWriter) error {
 				row = db.QueryRow("select * from usr where id = $1", userDataFromRequest.Id)
 				//Считывание данных
 				err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
-				fmt.Fprintf(w, "успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
+				_, err = fmt.Fprintf(w, "успешно, у пользователя с id %d стало %.2f руб\n", dataFromDB.Id, dataFromDB.Balance)
 			}
 		}
 	}
@@ -181,11 +181,11 @@ func getBalance(db *sql.DB, id int, w http.ResponseWriter) error {
 	var err error
 	if err = db.QueryRow("select * from usr where id = $1", id).Scan(&err); err != nil {
 		if err == sql.ErrNoRows { //пользователя нет в БД
-			fmt.Fprintf(w, "нет данных о id %d ", id)
+			_, err = fmt.Fprintf(w, "нет данных о id %d ", id)
 		} else {
 			row := db.QueryRow("select * from usr where id = $1", id)
 			err = row.Scan(&dataFromDB.Id, &dataFromDB.Balance)
-			fmt.Fprintf(w, "у пользователя с id %d  %.2f руб", dataFromDB.Id, dataFromDB.Balance)
+			_, err = fmt.Fprintf(w, "у пользователя с id %d  %.2f руб", dataFromDB.Id, dataFromDB.Balance)
 		}
 	}
 
@@ -200,11 +200,15 @@ func main() {
 
 	//Соединение с БД
 	db, err := sql.Open("postgres", "postgres://admin:admin@host.docker.internal:5436/users?sslmode=disable")
-
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
+	defer func(db *sql.DB) {
+		err = db.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(db)
 
 	//Создание хэндла для начисления средств
 	listenRequestSum(db)
@@ -232,12 +236,12 @@ func listenRequestRevenue(db *sql.DB) {
 			}
 			err = json.Unmarshal(body, &userFromRequest)
 			if err != nil {
-				io.WriteString(w, "ошибка, при парсинге данных, отмена запроса\n")
+				_, err = io.WriteString(w, "ошибка, при парсинге данных, отмена запроса\n")
 				return
 			}
 			err = userFromRequest.revenue(db, w)
 			if err != nil {
-				io.WriteString(w, "ошибка, при выполнении резервировании средств")
+				_, err = io.WriteString(w, "ошибка, при выполнении резервировании средств")
 				return
 			}
 		}
@@ -256,12 +260,12 @@ func listenRequestReservation(db *sql.DB) {
 			}
 			err = json.Unmarshal(body, &userFromRequest)
 			if err != nil {
-				io.WriteString(w, "ошибка, при парсинге данных, отмена запроса\n")
+				_, err = io.WriteString(w, "ошибка, при парсинге данных, отмена запроса\n")
 				return
 			}
 			err = userFromRequest.reservation(db, w)
 			if err != nil {
-				io.WriteString(w, "ошибка, при выполнении резервировании средств")
+				_, err = io.WriteString(w, "ошибка, при выполнении резервировании средств")
 				return
 			}
 		}
@@ -280,13 +284,13 @@ func listenRequestSum(db *sql.DB) {
 			}
 			err = json.Unmarshal(body, &userFromRequest)
 			if err != nil {
-				io.WriteString(w, "ошибка, при парсинге данных, отмена запроса")
+				_, err = io.WriteString(w, "ошибка, при парсинге данных, отмена запроса")
 				return
 			}
 
 			err = userFromRequest.sum(db, w)
 			if err != nil {
-				io.WriteString(w, "ошибка, при выполнении зачислении/списания средств")
+				_, err = io.WriteString(w, "ошибка, при выполнении зачислении/списания средств")
 				return
 			}
 		}
@@ -301,12 +305,12 @@ func listenRequestGetBalance(db *sql.DB) {
 			//Получение id с запроса
 			id, err := strconv.Atoi(r.URL.Query().Get("id"))
 			if err != nil {
-				io.WriteString(w, "ошибка, при парсинге данных, отмена запроса")
+				_, err = io.WriteString(w, "ошибка, при парсинге данных, отмена запроса")
 				return
 			}
 			err = getBalance(db, id, w)
 			if err != nil {
-				io.WriteString(w, "ошибка, при получении баланса пользователя")
+				_, err = io.WriteString(w, "ошибка, при получении баланса пользователя")
 				return
 			}
 		}
