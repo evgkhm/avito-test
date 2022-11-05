@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 )
 
 // User структура для записи/чтения данных с БД
@@ -200,17 +201,18 @@ func getBalance(db *sql.DB, id int, w http.ResponseWriter) error {
 func getReport(db *sql.DB, year int, month int, w http.ResponseWriter) error {
 	dataDB := UserReport{}
 
-	var err error
-	if err = db.QueryRow("select extract('year'=$1 from 'curr_date') from revenue", year).Scan(&err); err != nil {
-		if err == sql.ErrNoRows { //данных нет в БД
-			_, err = fmt.Fprintf(w, "нет данных о периоде %d ", year)
-		} else {
-			row := db.QueryRow("select extract('year'=$1 from 'curr_date') from revenue", year)
-			err = row.Scan(&dataDB.UserData, &dataDB.Year)
-			_, err = fmt.Fprintf(w, "за период %d списано %.2f руб", &dataDB.Year, dataDB.UserData.Cost)
-		}
+	rows, err := db.Query("select * from revenue where extract(year from curr_date) = $1 and extract(month from curr_date) = $2", year, month)
+	if err != nil {
+		panic(err)
 	}
+	defer rows.Close()
 
+	for rows.Next() {
+		var stamp time.Time
+		err = rows.Scan(&dataDB.UserData.Id, &dataDB.UserData.IdService, &dataDB.UserData.IdOrder, &dataDB.UserData.Cost, &stamp)
+		dataDB.Year = stamp.Year()
+		dataDB.Month = int(stamp.Month()) //TODO: добавить все это в мапу
+	}
 	return err
 }
 
@@ -257,25 +259,24 @@ func listenRequestReport(db *sql.DB) {
 			//Получение года с запроса
 			year, err := strconv.Atoi(r.URL.Query().Get("year"))
 			if err != nil {
-				_, err = io.WriteString(w, "ошибка, при парсинге данных, отмена запроса")
+				_, err = io.WriteString(w, "ошибка при парсинге данных, отмена запроса")
+				return
+			}
+			if year < 1975 || year > 2030 {
+				_, err = io.WriteString(w, "неправильный год, отмена запроса")
 				return
 			}
 			//Получение месяца
 			month, err := strconv.Atoi(r.URL.Query().Get("month"))
 			if err != nil {
-				_, err = io.WriteString(w, "ошибка, при парсинге данных, отмена запроса")
+				_, err = io.WriteString(w, "ошибка при парсинге данных, отмена запроса")
+				return
+			}
+			if month < 0 || month > 12 {
+				_, err = io.WriteString(w, "неправильный месяц, отмена запроса")
 				return
 			}
 
-			/*
-				id := r.URL.Query().Get("id")
-				currency := r.URL.Query().Get("currency")
-				iD, err := strconv.Atoi(id)
-				if err != nil {
-					io.WriteString(w, "ошибка, при парсинге данных, отмена запроса")
-					return
-				}
-			*/
 			err = getReport(db, year, month, w)
 			if err != nil {
 				_, err = io.WriteString(w, "ошибка, при получении баланса пользователя")
