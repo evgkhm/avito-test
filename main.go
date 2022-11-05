@@ -227,32 +227,38 @@ func getReport(db *sql.DB, year int, month int, w http.ResponseWriter) (map[int]
 	return res, err
 }
 
-func FloatToString(input_num float64) string {
-	// to convert a float number to a string
-	return strconv.FormatFloat(input_num, 'f', 6, 64)
-}
-
 func createReportCSV(data map[int]float64, w http.ResponseWriter) error {
-	/*rows := [][]string{
-		{"Название услуги", data[]},
-	}*/
-	var rows [][]string
-	for key, value := range data {
-		rows = [][]string{
-			{"название услуги", string(key), "общая сумма выручки за отчетный период", FloatToString(value)},
-		}
-	}
 	csvfile, err := os.Create("report.csv")
 	if err != nil {
 		_, err = io.WriteString(w, "ошибка при создании csv файла")
 		return err
 	}
 	cswWriter := csv.NewWriter(csvfile)
-	for _, row := range rows {
-		_ = cswWriter.Write(row)
+
+	for key, value := range data {
+		str1 := "название услуги"
+		str2 := strconv.Itoa(key)
+		str3 := "общая сумма выручки за отчетный период"
+		str4 := strconv.FormatFloat(value, 'f', 2, 64)
+
+		var res []string
+		res = append(res, str1)
+		res = append(res, str2)
+		res = append(res, str3)
+		res = append(res, str4)
+		err = cswWriter.Write(res)
+		if err != nil {
+			_, err = io.WriteString(w, "ошибка при создании csv файла")
+			return err
+		}
 	}
 	cswWriter.Flush()
-	csvfile.Close()
+
+	err = csvfile.Close()
+	if err != nil {
+		_, err = io.WriteString(w, "ошибка при создании csv файла")
+		return err
+	}
 
 	_, err = io.WriteString(w, "успешно, csv файл создан")
 	return err
@@ -324,8 +330,7 @@ func listenRequestReport(db *sql.DB) {
 				_, err = io.WriteString(w, "ошибка при попытки получить данные из БД для отчета, отмена запроса")
 				return
 			}
-			err = createReportCSV(reportMap, w)
-			//fmt.Println(reportMap)
+			err = createReportCSV(reportMap, w) //создание csv файла
 		}
 	})
 }
