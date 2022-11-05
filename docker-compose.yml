@@ -26,6 +26,6 @@ services:
       - "8080:8080"  #"8000:8000"
     depends_on:
       - postgres
-    #environment:
-      #- DB_PASSWORD=admin
+    environment:
+      - DB_PASSWORD=admin
       #- DB_PASSWORD=postgres
