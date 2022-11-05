@@ -198,22 +198,31 @@ func getBalance(db *sql.DB, id int, w http.ResponseWriter) error {
 }
 
 // getBalance метод для получения текущего баланса пользователя в БД и вывод обратной связи
-func getReport(db *sql.DB, year int, month int, w http.ResponseWriter) error {
+func getReport(db *sql.DB, year int, month int, w http.ResponseWriter) (map[int]float64, error) {
 	dataDB := UserReport{}
+	res := make(map[int]float64) //мапа с данными из БД
+	//var usersCount uint64              //число пользователей из БД для добавления в мапу
 
 	rows, err := db.Query("select * from revenue where extract(year from curr_date) = $1 and extract(month from curr_date) = $2", year, month)
 	if err != nil {
-		panic(err)
+		_, err = io.WriteString(w, "ошибка чтения данных из БД, отмена запроса")
+		return res, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err = rows.Close()
+		if err != nil {
+
+		}
+	}(rows)
 
 	for rows.Next() {
 		var stamp time.Time
 		err = rows.Scan(&dataDB.UserData.Id, &dataDB.UserData.IdService, &dataDB.UserData.IdOrder, &dataDB.UserData.Cost, &stamp)
 		dataDB.Year = stamp.Year()
-		dataDB.Month = int(stamp.Month()) //TODO: добавить все это в мапу
+		dataDB.Month = int(stamp.Month())
+		res[dataDB.UserData.IdService] += dataDB.UserData.Cost
 	}
-	return err
+	return res, err
 }
 
 func main() {
@@ -276,12 +285,13 @@ func listenRequestReport(db *sql.DB) {
 				_, err = io.WriteString(w, "неправильный месяц, отмена запроса")
 				return
 			}
-
-			err = getReport(db, year, month, w)
+			reportMap := make(map[int]float64)
+			reportMap, err = getReport(db, year, month, w)
 			if err != nil {
 				_, err = io.WriteString(w, "ошибка, при получении баланса пользователя")
 				return
 			}
+			fmt.Println(reportMap)
 		}
 	})
 }
