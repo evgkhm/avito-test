@@ -17,12 +17,10 @@ type UserReport struct {
 	Month    int `json:"month"`
 }
 
-// getBalance метод для получения текущего баланса пользователя в БД и вывод обратной связи
+// getReport метод для получения данных из БД для добавления в мап файл
 func getReport(db *sqlx.DB, year int, month int, w http.ResponseWriter) (map[int]float64, error) {
 	dataDB := UserReport{}
 	res := make(map[int]float64) //мапа с данными из БД
-	//var usersCount uint64              //число пользователей из БД для добавления в мапу
-
 	rows, err := db.Query("select * from revenue where extract(year from curr_date) = $1 and extract(month from curr_date) = $2", year, month)
 	if err != nil {
 		description := fmt.Sprint("attempt reading from database")
@@ -47,7 +45,7 @@ func getReport(db *sqlx.DB, year int, month int, w http.ResponseWriter) (map[int
 	return res, err
 }
 
-// createReportCSV функция создает csv файл отсчета
+// createReportCSV функция создает csv файл отсчета из мап файла
 func createReportCSV(data map[int]float64, w http.ResponseWriter) error {
 	csvfile, err := os.Create("report.csv")
 	if err != nil {

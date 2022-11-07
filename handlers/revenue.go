@@ -9,7 +9,7 @@ import (
 	"newNew/repository"
 )
 
-// ListenRequestRevenue метод для получения HTTP запроса для резервирования средств
+// ListenRequestRevenue метод для получения HTTP запроса для принятия средств из резерва
 func ListenRequestRevenue(db *sqlx.DB) {
 	//Хэндл для начисления и списания
 	http.HandleFunc("/revenue", func(w http.ResponseWriter, r *http.Request) {

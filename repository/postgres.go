@@ -62,6 +62,7 @@ func sendJsonAnswer(result bool, description string, w http.ResponseWriter) erro
 	return err
 }
 
+// NewPostgresDB открытие ДБ, данные для входа из .env файла
 func NewPostgresDB(cfg Config) (db *sqlx.DB, err error) {
 	db, err = sqlx.Open("postgres", fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=%s",
 		os.Getenv("POSTGRES_HOST"),
@@ -99,6 +100,7 @@ func GetBalance(db *sqlx.DB, id int, w http.ResponseWriter) error {
 	return err
 }
 
+// Revenue метод для признания средств из резерва
 func (dataRequest UserReservationRevenue) Revenue(db *sqlx.DB, w http.ResponseWriter) error {
 	dataDB := UserReservationRevenue{0, 0, 0, 0}
 	var err error

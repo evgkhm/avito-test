@@ -16,7 +16,6 @@ type User struct {
 
 // ListenRequestSum метод для получения HTTP запроса начисления средств
 func ListenRequestSum(db *sqlx.DB) {
-	//Хэндл для начисления и списания
 	http.HandleFunc("/sum", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			var UserFromRequest User

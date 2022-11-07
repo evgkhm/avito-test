@@ -40,7 +40,6 @@ func ListenRequestGetBalance(db *sqlx.DB) {
 				err = sendJsonAnswer(false, description, w)
 				return
 			}
-			//err = repository.getBalance(db, id, w)
 			err = repository.GetBalance(db, id, w)
 			if err != nil {
 				description := fmt.Sprint("attempt to get balance")
