@@ -47,7 +47,7 @@ func getReport(db *sqlx.DB, year int, month int, w http.ResponseWriter) (map[int
 
 // createReportCSV функция создает csv файл отсчета из мап файла
 func createReportCSV(data map[int]float64, w http.ResponseWriter) error {
-	csvfile, err := os.Create("report.csv")
+	csvfile, err := os.Create("../report.csv")
 	if err != nil {
 		description := fmt.Sprint("attempt to create csv file")
 		err = sendJsonAnswer(false, description, w)

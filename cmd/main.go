@@ -20,7 +20,7 @@ func main() {
 
 	//Соединение с БД
 	//db, err := sql.Open("postgres", "postgres://admin:admin@host.docker.internal:5436/users?sslmode=disable")
-	if err := godotenv.Load(); err != nil {
+	if err := godotenv.Load("../.env"); err != nil {
 		log.Fatalf("error loading env variables :%s", err.Error())
 	}
 	db, err := repository.NewPostgresDB(repository.Config{
