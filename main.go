@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	_ "github.com/lib/pq"
@@ -9,8 +10,10 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"sync"
+	"time"
 )
 
 // User структура для записи/чтения данных с БД
@@ -197,20 +200,67 @@ func getBalance(db *sql.DB, id int, w http.ResponseWriter) error {
 }
 
 // getBalance метод для получения текущего баланса пользователя в БД и вывод обратной связи
-func getReport(db *sql.DB, year int, month int, w http.ResponseWriter) error {
+func getReport(db *sql.DB, year int, month int, w http.ResponseWriter) (map[int]float64, error) {
 	dataDB := UserReport{}
+	res := make(map[int]float64) //мапа с данными из БД
+	//var usersCount uint64              //число пользователей из БД для добавления в мапу
 
-	var err error
-	if err = db.QueryRow("select extract('year'=$1 from 'curr_date') from revenue", year).Scan(&err); err != nil {
-		if err == sql.ErrNoRows { //данных нет в БД
-			_, err = fmt.Fprintf(w, "нет данных о периоде %d ", year)
-		} else {
-			row := db.QueryRow("select extract('year'=$1 from 'curr_date') from revenue", year)
-			err = row.Scan(&dataDB.UserData, &dataDB.Year)
-			_, err = fmt.Fprintf(w, "за период %d списано %.2f руб", &dataDB.Year, dataDB.UserData.Cost)
+	rows, err := db.Query("select * from revenue where extract(year from curr_date) = $1 and extract(month from curr_date) = $2", year, month)
+	if err != nil {
+		_, err = io.WriteString(w, "ошибка чтения данных из БД, отмена запроса")
+		return res, err
+	}
+	defer func(rows *sql.Rows) {
+		err = rows.Close()
+		if err != nil {
+
+		}
+	}(rows)
+
+	for rows.Next() {
+		var stamp time.Time
+		err = rows.Scan(&dataDB.UserData.Id, &dataDB.UserData.IdService, &dataDB.UserData.IdOrder, &dataDB.UserData.Cost, &stamp)
+		dataDB.Year = stamp.Year()
+		dataDB.Month = int(stamp.Month())
+		res[dataDB.UserData.IdService] += dataDB.UserData.Cost
+	}
+	return res, err
+}
+
+func createReportCSV(data map[int]float64, w http.ResponseWriter) error {
+	csvfile, err := os.Create("report.csv")
+	if err != nil {
+		_, err = io.WriteString(w, "ошибка при создании csv файла")
+		return err
+	}
+	cswWriter := csv.NewWriter(csvfile)
+
+	for key, value := range data {
+		str1 := "название услуги"
+		str2 := strconv.Itoa(key)
+		str3 := "общая сумма выручки за отчетный период"
+		str4 := strconv.FormatFloat(value, 'f', 2, 64)
+
+		var res []string
+		res = append(res, str1)
+		res = append(res, str2)
+		res = append(res, str3)
+		res = append(res, str4)
+		err = cswWriter.Write(res)
+		if err != nil {
+			_, err = io.WriteString(w, "ошибка при создании csv файла")
+			return err
 		}
 	}
+	cswWriter.Flush()
 
+	err = csvfile.Close()
+	if err != nil {
+		_, err = io.WriteString(w, "ошибка при создании csv файла")
+		return err
+	}
+
+	_, err = io.WriteString(w, "успешно, csv файл создан")
 	return err
 }
 
@@ -257,30 +307,30 @@ func listenRequestReport(db *sql.DB) {
 			//Получение года с запроса
 			year, err := strconv.Atoi(r.URL.Query().Get("year"))
 			if err != nil {
-				_, err = io.WriteString(w, "ошибка, при парсинге данных, отмена запроса")
+				_, err = io.WriteString(w, "ошибка при парсинге данных, отмена запроса")
+				return
+			}
+			if year < 1975 || year > 2030 {
+				_, err = io.WriteString(w, "неправильный год, отмена запроса")
 				return
 			}
 			//Получение месяца
 			month, err := strconv.Atoi(r.URL.Query().Get("month"))
 			if err != nil {
-				_, err = io.WriteString(w, "ошибка, при парсинге данных, отмена запроса")
+				_, err = io.WriteString(w, "ошибка при парсинге данных, отмена запроса")
 				return
 			}
-
-			/*
-				id := r.URL.Query().Get("id")
-				currency := r.URL.Query().Get("currency")
-				iD, err := strconv.Atoi(id)
-				if err != nil {
-					io.WriteString(w, "ошибка, при парсинге данных, отмена запроса")
-					return
-				}
-			*/
-			err = getReport(db, year, month, w)
+			if month < 0 || month > 12 {
+				_, err = io.WriteString(w, "неправильный месяц, отмена запроса")
+				return
+			}
+			reportMap := make(map[int]float64)
+			reportMap, err = getReport(db, year, month, w)
 			if err != nil {
-				_, err = io.WriteString(w, "ошибка, при получении баланса пользователя")
+				_, err = io.WriteString(w, "ошибка при попытки получить данные из БД для отчета, отмена запроса")
 				return
 			}
+			err = createReportCSV(reportMap, w) //создание csv файла
 		}
 	})
 }
