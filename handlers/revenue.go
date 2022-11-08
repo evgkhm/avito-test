@@ -14,7 +14,8 @@ func ListenRequestRevenue(db *sqlx.DB) {
 	//Хэндл для начисления и списания
 	http.HandleFunc("/revenue", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
-			var userFromRequest UserReservationRevenue
+			//var userFromRequest UserReservationRevenue
+			userFromRequest := repository.NewUserReservRev()
 			body, err := ioutil.ReadAll(r.Body) //можно создать отдельную функцию для обоих хэндлов
 			if err != nil {
 				panic(err)
@@ -25,7 +26,8 @@ func ListenRequestRevenue(db *sqlx.DB) {
 				err = sendJsonAnswer(false, description, w)
 				return
 			}
-			err = repository.UserReservationRevenue.Revenue(repository.UserReservationRevenue(userFromRequest), db, w)
+			//err = repository.UserReservationRevenue.Revenue(repository.UserReservationRevenue(userFromRequest), db, w)
+			err = userFromRequest.Revenue(db, w)
 			if err != nil {
 				description := fmt.Sprint("attempt to make a revenue")
 				err = sendJsonAnswer(false, description, w)

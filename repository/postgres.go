@@ -42,6 +42,14 @@ func NewRepository(db *sqlx.DB) *Postgres {
 	return &Postgres{}
 }
 
+func NewUser() *User {
+	return &User{}
+}
+
+func NewUserReservRev() *UserReservationRevenue {
+	return &UserReservationRevenue{}
+}
+
 type Repository interface {
 	Sum(db *sqlx.DB, w http.ResponseWriter) error
 	Reservation(db *sqlx.DB, w http.ResponseWriter) error
@@ -101,7 +109,7 @@ func GetBalance(db *sqlx.DB, id int, w http.ResponseWriter) error {
 }
 
 // Revenue метод для признания средств из резерва
-func (dataRequest UserReservationRevenue) Revenue(db *sqlx.DB, w http.ResponseWriter) error {
+func (dataRequest *UserReservationRevenue) Revenue(db *sqlx.DB, w http.ResponseWriter) error {
 	dataDB := UserReservationRevenue{0, 0, 0, 0}
 	var err error
 	if err = db.QueryRow("select * from reservation where id = $1 and id_service = $2 and id_order = $3 and cost = $4",
@@ -161,7 +169,7 @@ func (dataRequest UserReservationRevenue) Revenue(db *sqlx.DB, w http.ResponseWr
 }
 
 // Reservation метод резервирования средств с основного баланса на отдельном счете
-func (dataRequest UserReservationRevenue) Reservation(db *sqlx.DB, w http.ResponseWriter) error {
+func (dataRequest *UserReservationRevenue) Reservation(db *sqlx.DB, w http.ResponseWriter) error {
 	dataDB := User{0, 0}
 	var err error
 	if err = db.QueryRow("select * from usr where id = $1", dataRequest.Id).Scan(&err); err != nil {
@@ -213,7 +221,7 @@ func (dataRequest UserReservationRevenue) Reservation(db *sqlx.DB, w http.Respon
 }
 
 // Sum метод для начисления средств в БД
-func (dataRequest User) Sum(db *sqlx.DB, w http.ResponseWriter) error {
+func (dataRequest *User) Sum(db *sqlx.DB, w http.ResponseWriter) error {
 	dataDB := User{0, 0}
 	var err error
 	//ищем нужный ID из БД
@@ -265,7 +273,7 @@ func (dataRequest User) Sum(db *sqlx.DB, w http.ResponseWriter) error {
 }
 
 // Dereservation метод резервирования средств с основного баланса на отдельном счете
-func (dataRequest UserReservationRevenue) Dereservation(db *sqlx.DB, w http.ResponseWriter) error {
+func (dataRequest *UserReservationRevenue) Dereservation(db *sqlx.DB, w http.ResponseWriter) error {
 	dataDB := UserReservationRevenue{0, 0, 0, 0}
 	var err error
 	if err = db.QueryRow("select * from reservation where id = $1 and id_service = $2 and id_order = $3 and cost = $4",

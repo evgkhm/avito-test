@@ -13,7 +13,8 @@ import (
 func ListenRequestDereserving(db *sqlx.DB) {
 	http.HandleFunc("/dereservation", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
-			var userFromRequest UserReservationRevenue
+			//var userFromRequest UserReservationRevenue
+			userFromRequest := repository.NewUserReservRev()
 			body, err := ioutil.ReadAll(r.Body)
 			if err != nil {
 				panic(err)
@@ -24,7 +25,8 @@ func ListenRequestDereserving(db *sqlx.DB) {
 				err = sendJsonAnswer(false, description, w)
 				return
 			}
-			err = repository.UserReservationRevenue.Dereservation(repository.UserReservationRevenue(userFromRequest), db, w)
+			//err = repository.UserReservationRevenue.Dereservation(repository.UserReservationRevenue(userFromRequest), db, w)
+			err = userFromRequest.Dereservation(db, w)
 			if err != nil {
 				description := fmt.Sprint("attempt to make a reservation")
 				err = sendJsonAnswer(false, description, w)

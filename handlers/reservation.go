@@ -9,18 +9,11 @@ import (
 	"newNew/repository"
 )
 
-type UserReservationRevenue struct {
-	Id        int     `json:"id"`
-	IdService int     `json:"id_service"`
-	IdOrder   int     `json:"id_order"`
-	Cost      float64 `json:"cost"`
-}
-
 // ListenRequestReservation метод для получения HTTP запроса для резервирования средств
 func ListenRequestReservation(db *sqlx.DB) {
 	http.HandleFunc("/reservation", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
-			var userFromRequest UserReservationRevenue
+			userFromRequest := repository.NewUserReservRev()
 			body, err := ioutil.ReadAll(r.Body)
 			if err != nil {
 				panic(err)
@@ -31,7 +24,7 @@ func ListenRequestReservation(db *sqlx.DB) {
 				err = sendJsonAnswer(false, description, w)
 				return
 			}
-			err = repository.UserReservationRevenue.Reservation(repository.UserReservationRevenue(userFromRequest), db, w)
+			err = userFromRequest.Reservation(db, w)
 			if err != nil {
 				description := fmt.Sprint("attempt to make a reservation")
 				err = sendJsonAnswer(false, description, w)

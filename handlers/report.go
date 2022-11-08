@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	"net/http"
+	"newNew/repository"
 	"os"
 	"strconv"
 	"time"
 )
 
 type UserReport struct {
-	UserData UserReservationRevenue
+	UserData repository.UserReservationRevenue
 	Year     int `json:"year"`
 	Month    int `json:"month"`
 }
