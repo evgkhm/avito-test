@@ -3,16 +3,7 @@ CREATE TABLE IF NOT EXISTS usr(
   balance DECIMAL
 );
 
-/*CREATE TABLE IF NOT EXISTS reservation(
-  counter SERIAL PRIMARY KEY,
-  id INTEGER,
-  id_service INTEGER,
-  id_order INTEGER,
-  cost DECIMAL
-);*/
-
 CREATE TABLE IF NOT EXISTS reservation(
-    /*counter SERIAL PRIMARY KEY,*/
     id INTEGER,
     id_service INTEGER,
     id_order INTEGER,

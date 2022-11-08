@@ -11,11 +11,14 @@ services:
       - POSTGRES_USER=admin
       - POSTGRES_DB=users
     image: postgres:15.0-alpine3.16
+    volumes:
+      - ./db/init_db.sh:/docker-entrypoint-initdb.d/init_db.sh
 
   wallet-app:
     build:
       context: .
       dockerfile: ./Dockerfile
+    restart: always
     command: ./wallet-app
     ports:
       - "8080:8080"
@@ -23,5 +26,3 @@ services:
       - postgres
     env_file:
       - /.env
-    #environment:
-    #  - DB_PASSWORD=admin
