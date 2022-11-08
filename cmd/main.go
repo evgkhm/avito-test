@@ -57,6 +57,10 @@ func main() {
 
 	//Создание хэндла для месячного отсчета
 	handlers.ListenRequestReport(db)
+
+	//Создание хэндла для разрезервирования
+	handlers.ListenRequestDereserving(db)
+
 	select {}
 }
 

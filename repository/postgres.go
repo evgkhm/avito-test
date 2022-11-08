@@ -263,3 +263,73 @@ func (dataRequest User) Sum(db *sqlx.DB, w http.ResponseWriter) error {
 	}
 	return err
 }
+
+// Dereservation метод резервирования средств с основного баланса на отдельном счете
+func (dataRequest UserReservationRevenue) Dereservation(db *sqlx.DB, w http.ResponseWriter) error {
+	dataDB := UserReservationRevenue{0, 0, 0, 0}
+	var err error
+	if err = db.QueryRow("select * from reservation where id = $1 and id_service = $2 and id_order = $3 and cost = $4",
+		dataRequest.Id, &dataRequest.IdService, dataRequest.IdOrder, &dataRequest.Cost).Scan(&err); err != nil {
+		if err == sql.ErrNoRows {
+			description := fmt.Sprintf("no data for id = %d", dataRequest.Id)
+			err = sendJsonAnswer(false, description, w)
+			return err
+		}
+		//получение данных из БД
+		row := db.QueryRow("select * from reservation where id = $1 and id_service = $2 and id_order = $3 and cost = $4",
+			dataRequest.Id, &dataRequest.IdService, dataRequest.IdOrder, &dataRequest.Cost)
+		err = row.Scan(&dataDB.Id, &dataDB.IdService, &dataDB.IdOrder, &dataDB.Cost)
+		//Проверка, что есть такой пользователь в таблице зарезервированных
+		if dataRequest.Id != dataDB.Id {
+			description := fmt.Sprintf("no data for id = %d", dataRequest.Id)
+			err = sendJsonAnswer(false, description, w)
+			return err
+		} else if dataRequest.IdOrder != dataDB.IdOrder {
+			description := fmt.Sprintf("no data for id_order = %d", dataRequest.IdOrder)
+			err = sendJsonAnswer(false, description, w)
+			return err
+		} else if dataRequest.IdService != dataDB.IdService {
+			description := fmt.Sprintf("no data for id_service = %d", dataRequest.IdService)
+			err = sendJsonAnswer(false, description, w)
+			return err
+		} else if dataRequest.Cost != dataDB.Cost {
+			description := fmt.Sprintf("no data for cost = %f", dataRequest.Cost)
+			err = sendJsonAnswer(false, description, w)
+			return err
+		}
+		//Удаление строки резервации из таблицы reservation
+		sqlStr := `delete from "reservation" where id = $1 and id_service = $2 and id_order = $3 and cost = $4`
+		_, err = db.Exec(sqlStr, dataRequest.Id, dataRequest.IdService, dataRequest.IdOrder, dataRequest.Cost)
+		if err != nil {
+			panic(err)
+		}
+
+		//получение данных из БД usr
+		dataDereserv := User{0, 0}
+		row = db.QueryRow("select * from usr where id = $1", dataRequest.Id)
+		err = row.Scan(&dataDereserv.Id, &dataDereserv.Balance)
+		if err != nil {
+			panic(err)
+		}
+
+		newBalance := dataDereserv.Balance + dataDB.Cost
+
+		//Строка с sql запросом на обновление данных в основной таблице usr
+		sqlStr = `update "usr" set "balance"=$1 where "id"=$2`
+		_, err = db.Exec(sqlStr, newBalance, dataDB.Id)
+		if err != nil {
+			panic(err)
+		}
+
+		//Метод для получения обновленных данных из DB
+		row = db.QueryRow("select * from usr where id = $1", dataDereserv.Id)
+		if err != nil {
+			panic(err)
+		}
+		//Считывание данных
+		err = row.Scan(&dataDereserv.Id, &dataDereserv.Balance)
+		description := fmt.Sprintf("user id = %d now has %.2f", dataDereserv.Id, dataDereserv.Balance)
+		err = sendJsonAnswer(true, description, w)
+	}
+	return err
+}
