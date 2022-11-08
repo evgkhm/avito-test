@@ -36,7 +36,7 @@ https://www.getpostman.com/collections/6c76713950f887050d0b
 Метод получения месячного отсчета 
 ![image](https://user-images.githubusercontent.com/110117813/200486587-d9018696-7f8a-4d5d-8a03-c7757563b69e.png)
 
-Создается repost.csv с данными
+Создается report.csv с данными
 ![image](https://user-images.githubusercontent.com/110117813/200488259-66a79c3d-a8f9-4b45-bb84-6cf2d99e103e.png)
 
 
