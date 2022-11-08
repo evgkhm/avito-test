@@ -18,9 +18,7 @@ func main() {
 	httpServerExitDone.Add(1)
 	startHttpServer(httpServerExitDone)
 
-	//Соединение с БД
-	//db, err := sql.Open("postgres", "postgres://admin:admin@host.docker.internal:5436/users?sslmode=disable")
-	if err := godotenv.Load("../.env"); err != nil {
+	if err := godotenv.Load("./.env"); err != nil { //"../.env" for local using
 		log.Fatalf("error loading env variables :%s", err.Error())
 	}
 	db, err := repository.NewPostgresDB(repository.Config{
