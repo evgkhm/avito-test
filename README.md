@@ -9,8 +9,9 @@
 
 ## Как запустить?
 1. `git clone https://github.com/evgkhm/avito-test`
-2. `docker-compose up --build`  
-3. При первом запуске может потребуется прописать миграцию БД
+2. cd avito-test
+3. `docker-compose up --build`  
+4. При первом запуске может потребуется прописать миграцию БД
 `migrate -path ./db/migrations -database 'postgres://admin:admin@127.0.0.1:5436/users?sslmode=disable' up`
 
 ## Тестирование
