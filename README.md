@@ -13,6 +13,10 @@
 4. При первом запуске может потребуется прописать миграцию БД
 `migrate -path ./db/migrations -database 'postgres://admin:admin@127.0.0.1:5436/users?sslmode=disable' up`
 
+## Тестирование
+Примеры Postman запросов
+https://www.getpostman.com/collections/6c76713950f887050d0b
+
 Выполнения PUT-запроса для начисления/списания средств  
 ![image](https://user-images.githubusercontent.com/110117813/181467920-032ee6e3-64ac-4a12-8dd4-8da03b70347d.png)
 
