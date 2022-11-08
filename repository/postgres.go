@@ -18,9 +18,6 @@ type Config struct {
 	SSLMode  string
 }
 
-type Postgres struct {
-}
-
 type User struct {
 	Id      int     `json:"id"`
 	Balance float64 `json:"balance"`
@@ -36,10 +33,6 @@ type UserReservationRevenue struct {
 	IdService int     `json:"id_service"`
 	IdOrder   int     `json:"id_order"`
 	Cost      float64 `json:"cost"`
-}
-
-func NewRepository(db *sqlx.DB) *Postgres {
-	return &Postgres{}
 }
 
 func NewUser() *User {
