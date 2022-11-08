@@ -8,8 +8,8 @@
 6. Сценарий разрезервирования денег
 
 ## Как запустить?
-1. `git clone https://github.com/evgkhm/golang_http_postgresql-main`
-2. `cd golang_http_postgresql-main`
+1. `git clone https://github.com/evgkhm/avito-test`
+2. `cd https://github.com/evgkhm/avito-test`
 3. `docker-compose up --build`  
 4. При первом запуске может потребуется прописать миграцию БД
 `migrate -path ./db/migrations -database 'postgres://admin:admin@127.0.0.1:5436/users?sslmode=disable' up`
