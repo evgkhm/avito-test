@@ -27,6 +27,15 @@ https://www.getpostman.com/collections/6c76713950f887050d0b
 После начисления средств создается пользователь
 ![image](https://user-images.githubusercontent.com/110117813/200486013-d32bc55b-a06a-4a75-902a-cc545d91dd43.png)
 
+Метод резервирования средств
+![image](https://user-images.githubusercontent.com/110117813/200486301-a5518a68-f5fd-4fca-91f1-d254a0bcb095.png)
+
+Метод признания выручки
+![image](https://user-images.githubusercontent.com/110117813/200486427-dc44a251-d3e6-4631-942d-0d9ea5928d15.png)
+
+Метод получения месячного отсчета 
+![image](https://user-images.githubusercontent.com/110117813/200486587-d9018696-7f8a-4d5d-8a03-c7757563b69e.png)
+
 
 ### Для подключения к БД
 1. Из командной строки выполнить `docker ps`
