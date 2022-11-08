@@ -18,11 +18,15 @@ Postman запросы
 https://www.getpostman.com/collections/6c76713950f887050d0b
 
 ### Примеры запросов
-Выполнения начисления средств  
-![image](https://user-images.githubusercontent.com/110117813/181467920-032ee6e3-64ac-4a12-8dd4-8da03b70347d.png)
+Метод получения баланса пользователя при первом подключении сообщит о том, что пользователь отсутствует  
+![image](https://user-images.githubusercontent.com/110117813/200485739-49d09784-19c7-4b3a-a6e0-546b69446bdd.png)
 
-Изменился баланс пользователя
-![image](https://user-images.githubusercontent.com/110117813/181468028-9cc63eb6-d83c-4cb5-ab60-87b1b0908d29.png)
+Метод начисления средств пользователю
+![image](https://user-images.githubusercontent.com/110117813/200485869-265a0a38-c134-4be5-b804-23c980c3ad9a.png)
+
+После начисления средств создается пользователь
+![image](https://user-images.githubusercontent.com/110117813/200486013-d32bc55b-a06a-4a75-902a-cc545d91dd43.png)
+
 
 ### Для подключения к БД
 1. Из командной строки выполнить `docker ps`
