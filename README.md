@@ -5,6 +5,7 @@
 3. Метод признания выручки
 4. Метод получения баланса пользователя
 5. Доп. задание 1 (реализовать метод для получения месячного отчета)
+6. Сценарий разрезервирования денег
 
 ## Как запустить?
 1. `git clone https://github.com/evgkhm/golang_http_postgresql-main`
@@ -38,6 +39,9 @@ https://www.getpostman.com/collections/6c76713950f887050d0b
 
 Создается report.csv с данными
 ![image](https://user-images.githubusercontent.com/110117813/200488259-66a79c3d-a8f9-4b45-bb84-6cf2d99e103e.png)
+
+Сценарий разрезервирования денег
+![image](https://user-images.githubusercontent.com/110117813/200497194-c0ff6a0a-b889-49ed-8086-abfdb4520335.png)
 
 
 ### Для подключения к БД
