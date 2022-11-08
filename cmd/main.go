@@ -13,7 +13,6 @@ import (
 )
 
 func main() {
-	//Создание сервера
 	httpServerExitDone := &sync.WaitGroup{}
 	httpServerExitDone.Add(1)
 	startHttpServer(httpServerExitDone)
@@ -30,7 +29,6 @@ func main() {
 		SSLMode:  os.Getenv("POSTGRES_SSLMODE"),
 	})
 
-	/*repos := */
 	repository.NewRepository(db)
 
 	if err != nil {

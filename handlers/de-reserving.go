@@ -9,7 +9,7 @@ import (
 	"newNew/repository"
 )
 
-// ListenRequestDereserving метод для получения HTTP запроса для разрезервания средств
+// ListenRequestDereserving метод для получения HTTP запроса для разрезервирования средств
 func ListenRequestDereserving(db *sqlx.DB) {
 	http.HandleFunc("/dereservation", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
