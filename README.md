@@ -4,15 +4,13 @@
 2. Метод резервирования средств
 3. Метод признания выручки
 4. Метод получения баланса пользователя
-5. Доп. задание 1 (реализовать метод для получения месячного отчета)
+5. Доп. задание 1 (метод для получения месячного отчета)
 6. Сценарий разрезервирования денег
 
 ## Как запустить?
 1. `git clone https://github.com/evgkhm/avito-test`
 2. `cd avito-test`
 3. `docker-compose up --build`  
-4. При первом запуске может потребуется прописать миграцию БД
-`migrate -path ./db/migrations -database 'postgres://admin:admin@127.0.0.1:5436/users?sslmode=disable' up`
 
 ## Тестирование
 Postman запросы
@@ -49,3 +47,6 @@ https://www.getpostman.com/collections/6c76713950f887050d0b
 2. Найти CONTAINER ID
 3. Выполнить `docker exec -it CONTAINER ID /bin/bash`
 4. Подключение к БД `psql -U admin -d users`
+
+### Для миграции БД
+`migrate -path ./db/migrations -database 'postgres://admin:admin@127.0.0.1:5436/users?sslmode=disable' up`
