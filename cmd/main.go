@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"newNew/handlers"
 	"newNew/repository"
-	"os"
 	"sync"
 )
 
@@ -20,15 +19,8 @@ func main() {
 	if err := godotenv.Load("./.env"); err != nil { //"../.env" for local using
 		log.Fatalf("error loading env variables :%s", err.Error())
 	}
-	cfg := repository.Config{
-		Host:     os.Getenv("POSTGRES_HOST"),
-		Port:     os.Getenv("POSTGRES_PORT"),
-		Username: os.Getenv("POSTGRES_USERNAME"),
-		Password: os.Getenv("POSTGRES_PASSWORD"),
-		DBName:   os.Getenv("POSTGRES_DB"),
-		SSLMode:  os.Getenv("POSTGRES_SSLMODE"),
-	}
-	db, err := repository.NewPostgresDB(cfg)
+
+	db, err := repository.NewPostgresDB()
 
 	if err != nil {
 		panic(err)

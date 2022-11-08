@@ -64,7 +64,7 @@ func sendJsonAnswer(result bool, description string, w http.ResponseWriter) erro
 }
 
 // NewPostgresDB открытие ДБ, данные для входа из .env файла
-func NewPostgresDB(cfg Config) (db *sqlx.DB, err error) {
+func NewPostgresDB() (db *sqlx.DB, err error) {
 	db, err = sqlx.Open("postgres", fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=%s",
 		os.Getenv("POSTGRES_HOST"),
 		os.Getenv("POSTGRES_PORT"),
