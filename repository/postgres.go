@@ -49,8 +49,8 @@ type Repository interface {
 	Revenue(db *sqlx.DB, w http.ResponseWriter) error
 }
 
-// sendJsonAnswer получает результат работы, описание и отправляет сообщение в json формате
-func sendJsonAnswer(result bool, description string, w http.ResponseWriter) error {
+// SendJsonAnswer получает результат работы, описание и отправляет сообщение в json формате
+func SendJsonAnswer(result bool, description string, w http.ResponseWriter) error {
 	var data jsonResponse
 	data.Result, data.Description = result, description
 
@@ -89,14 +89,14 @@ func GetBalance(db *sqlx.DB, id int, w http.ResponseWriter) error {
 	if err = db.QueryRow("select * from usr where id = $1", id).Scan(&err); err != nil {
 		if err == sql.ErrNoRows { //пользователя нет в БД
 			description := fmt.Sprintf("no data for id = %d", id)
-			err = sendJsonAnswer(false, description, w)
+			err = SendJsonAnswer(false, description, w)
 			return err
 		}
 		row := db.QueryRow("select * from usr where id = $1", id)
 		err = row.Scan(&dataDB.Id, &dataDB.Balance)
 
 		description := fmt.Sprintf("id = %d, balance = %.2f", dataDB.Id, dataDB.Balance)
-		err = sendJsonAnswer(true, description, w)
+		err = SendJsonAnswer(true, description, w)
 	}
 	return err
 }
@@ -110,7 +110,7 @@ func (dataRequest *UserReservationRevenue) Revenue(db *sqlx.DB, w http.ResponseW
 		//проверка того,что пользователя нет в БД
 		if err == sql.ErrNoRows {
 			description := fmt.Sprintf("no data for id = %d", dataRequest.Id)
-			err = sendJsonAnswer(false, description, w)
+			err = SendJsonAnswer(false, description, w)
 			return err
 		}
 		//получение данных из БД
@@ -120,19 +120,19 @@ func (dataRequest *UserReservationRevenue) Revenue(db *sqlx.DB, w http.ResponseW
 		//Проверка, что есть такой пользователь в таблице зарезервированных
 		if dataRequest.Id != dataDB.Id {
 			description := fmt.Sprintf("no data for id = %d", dataRequest.Id)
-			err = sendJsonAnswer(false, description, w)
+			err = SendJsonAnswer(false, description, w)
 			return err
 		} else if dataRequest.IdOrder != dataDB.IdOrder {
 			description := fmt.Sprintf("no data for id_order = %d", dataRequest.IdOrder)
-			err = sendJsonAnswer(false, description, w)
+			err = SendJsonAnswer(false, description, w)
 			return err
 		} else if dataRequest.IdService != dataDB.IdService {
 			description := fmt.Sprintf("no data for id_service = %d", dataRequest.IdService)
-			err = sendJsonAnswer(false, description, w)
+			err = SendJsonAnswer(false, description, w)
 			return err
 		} else if dataRequest.Cost != dataDB.Cost {
 			description := fmt.Sprintf("no data for cost = %f", dataRequest.Cost)
-			err = sendJsonAnswer(false, description, w)
+			err = SendJsonAnswer(false, description, w)
 			return err
 		}
 		sqlStr := `insert into "revenue" values ($1,$2,$3,$4)`
@@ -156,7 +156,7 @@ func (dataRequest *UserReservationRevenue) Revenue(db *sqlx.DB, w http.ResponseW
 		//Считывание данных
 		err = row.Scan(&dataDB.Id, &dataDB.IdOrder, &dataDB.IdService, &dataDB.Cost)
 		description := fmt.Sprintf("user id = %d was debited %.2f from reservation", dataDB.Id, dataRequest.Cost)
-		err = sendJsonAnswer(true, description, w)
+		err = SendJsonAnswer(true, description, w)
 	}
 	return err
 }
@@ -168,7 +168,7 @@ func (dataRequest *UserReservationRevenue) Reservation(db *sqlx.DB, w http.Respo
 	if err = db.QueryRow("select * from usr where id = $1", dataRequest.Id).Scan(&err); err != nil {
 		if err == sql.ErrNoRows { //пользователя нет в БД
 			description := fmt.Sprintf("no data for id = %d", dataRequest.Id)
-			err = sendJsonAnswer(false, description, w)
+			err = SendJsonAnswer(false, description, w)
 			return err
 		}
 		//получение данных из БД
@@ -178,8 +178,8 @@ func (dataRequest *UserReservationRevenue) Reservation(db *sqlx.DB, w http.Respo
 		newBalance := dataDB.Balance - dataRequest.Cost
 		//Проверка того, что нельзя уйти в минус
 		if newBalance < 0 {
-			description := fmt.Sprint("attempt to go into the negative")
-			err = sendJsonAnswer(false, description, w)
+			description := "attempt to go into the negative"
+			err = SendJsonAnswer(false, description, w)
 			return err
 		}
 		//Добавление в таблицу reservation данных
@@ -189,8 +189,8 @@ func (dataRequest *UserReservationRevenue) Reservation(db *sqlx.DB, w http.Respo
 		if err != nil {
 			panic(err)
 		} else if n, _ := res.RowsAffected(); n != 1 { //нет добавления в таблицу коллизия данных
-			description := fmt.Sprint("data collision")
-			err = sendJsonAnswer(false, description, w)
+			description := "data collision"
+			err = SendJsonAnswer(false, description, w)
 			return err
 		}
 
@@ -208,7 +208,7 @@ func (dataRequest *UserReservationRevenue) Reservation(db *sqlx.DB, w http.Respo
 		//Считывание данных
 		err = row.Scan(&dataDB.Id, &dataDB.Balance)
 		description := fmt.Sprintf("user id = %d now has %.2f", dataDB.Id, dataDB.Balance)
-		err = sendJsonAnswer(true, description, w)
+		err = SendJsonAnswer(true, description, w)
 	}
 	return err
 }
@@ -232,16 +232,16 @@ func (dataRequest *User) Sum(db *sqlx.DB, w http.ResponseWriter) error {
 			//Считывание данных
 			err = row.Scan(&dataDB.Id, &dataDB.Balance)
 			description := fmt.Sprintf("user id = %d now has %.2f", dataDB.Id, dataDB.Balance)
-			err = sendJsonAnswer(true, description, w)
+			err = SendJsonAnswer(true, description, w)
 		} else { //пользователь есть в БД, нужно обновить баланс
 			row := db.QueryRow("select * from usr where id = $1", dataRequest.Id)
 			err = row.Scan(&dataDB.Id, &dataDB.Balance)
 			if dataRequest.Balance < 0 {
-				description := fmt.Sprint("attempt to add a negative number")
-				err = sendJsonAnswer(false, description, w)
+				description := "attempt to add a negative number"
+				err = SendJsonAnswer(false, description, w)
 			} else if dataRequest.Balance < 0.1 {
-				description := fmt.Sprint("attempt to add a number less than a penny")
-				err = sendJsonAnswer(false, description, w)
+				description := "attempt to add a number less than a penny"
+				err = SendJsonAnswer(false, description, w)
 			} else {
 				//Определение нового баланса
 				newBalance := dataDB.Balance + dataRequest.Balance
@@ -258,7 +258,7 @@ func (dataRequest *User) Sum(db *sqlx.DB, w http.ResponseWriter) error {
 
 				//Вывод обновленных данных
 				description := fmt.Sprintf("user id = %d now has %.2f", dataDB.Id, dataDB.Balance)
-				err = sendJsonAnswer(true, description, w)
+				err = SendJsonAnswer(true, description, w)
 			}
 		}
 	}
@@ -273,7 +273,7 @@ func (dataRequest *UserReservationRevenue) Dereservation(db *sqlx.DB, w http.Res
 		dataRequest.Id, &dataRequest.IdService, dataRequest.IdOrder, &dataRequest.Cost).Scan(&err); err != nil {
 		if err == sql.ErrNoRows {
 			description := fmt.Sprintf("no data for id = %d", dataRequest.Id)
-			err = sendJsonAnswer(false, description, w)
+			err = SendJsonAnswer(false, description, w)
 			return err
 		}
 		//получение данных из БД
@@ -283,19 +283,19 @@ func (dataRequest *UserReservationRevenue) Dereservation(db *sqlx.DB, w http.Res
 		//Проверка, что есть такой пользователь в таблице зарезервированных
 		if dataRequest.Id != dataDB.Id {
 			description := fmt.Sprintf("no data for id = %d", dataRequest.Id)
-			err = sendJsonAnswer(false, description, w)
+			err = SendJsonAnswer(false, description, w)
 			return err
 		} else if dataRequest.IdOrder != dataDB.IdOrder {
 			description := fmt.Sprintf("no data for id_order = %d", dataRequest.IdOrder)
-			err = sendJsonAnswer(false, description, w)
+			err = SendJsonAnswer(false, description, w)
 			return err
 		} else if dataRequest.IdService != dataDB.IdService {
 			description := fmt.Sprintf("no data for id_service = %d", dataRequest.IdService)
-			err = sendJsonAnswer(false, description, w)
+			err = SendJsonAnswer(false, description, w)
 			return err
 		} else if dataRequest.Cost != dataDB.Cost {
 			description := fmt.Sprintf("no data for cost = %f", dataRequest.Cost)
-			err = sendJsonAnswer(false, description, w)
+			err = SendJsonAnswer(false, description, w)
 			return err
 		}
 		//Удаление строки резервации из таблицы reservation
@@ -330,7 +330,7 @@ func (dataRequest *UserReservationRevenue) Dereservation(db *sqlx.DB, w http.Res
 		//Считывание данных
 		err = row.Scan(&dataDereserv.Id, &dataDereserv.Balance)
 		description := fmt.Sprintf("user id = %d now has %.2f", dataDereserv.Id, dataDereserv.Balance)
-		err = sendJsonAnswer(true, description, w)
+		err = SendJsonAnswer(true, description, w)
 	}
 	return err
 }

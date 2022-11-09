@@ -2,9 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/jmoiron/sqlx"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"newNew/repository"
 )
@@ -14,23 +13,27 @@ func ListenRequestRevenue(db *sqlx.DB) {
 	//Хэндл для начисления и списания
 	http.HandleFunc("/revenue", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
-			//var userFromRequest UserReservationRevenue
 			userFromRequest := repository.NewUserReservRev()
-			body, err := ioutil.ReadAll(r.Body) //можно создать отдельную функцию для обоих хэндлов
+			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				panic(err)
 			}
 			err = json.Unmarshal(body, &userFromRequest)
 			if err != nil {
-				description := fmt.Sprint("attempt to parse data")
-				err = sendJsonAnswer(false, description, w)
+				description := "attempt to parse data"
+				err = repository.SendJsonAnswer(false, description, w)
+				if err != nil {
+					return
+				}
 				return
 			}
-			//err = repository.UserReservationRevenue.Revenue(repository.UserReservationRevenue(userFromRequest), db, w)
 			err = userFromRequest.Revenue(db, w)
 			if err != nil {
-				description := fmt.Sprint("attempt to make a revenue")
-				err = sendJsonAnswer(false, description, w)
+				description := "attempt to make a revenue"
+				err = repository.SendJsonAnswer(false, description, w)
+				if err != nil {
+					return
+				}
 				return
 			}
 		}

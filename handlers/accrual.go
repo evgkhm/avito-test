@@ -2,9 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/jmoiron/sqlx"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"newNew/repository"
 )
@@ -14,20 +13,26 @@ func ListenRequestSum(db *sqlx.DB) {
 	http.HandleFunc("/sum", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			UserFromRequest := repository.NewUser()
-			body, err := ioutil.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				panic(err)
 			}
 			err = json.Unmarshal(body, &UserFromRequest)
 			if err != nil {
-				description := fmt.Sprint("attempt to parse data")
-				err = sendJsonAnswer(false, description, w)
+				description := "attempt to parse data"
+				err = repository.SendJsonAnswer(false, description, w)
+				if err != nil {
+					return
+				}
 				return
 			}
 			err = UserFromRequest.Sum(db, w)
 			if err != nil {
-				description := fmt.Sprint("attempt to make accrual")
-				err = sendJsonAnswer(false, description, w)
+				description := "attempt to make accrual"
+				err = repository.SendJsonAnswer(false, description, w)
+				if err != nil {
+					return
+				}
 				return
 			}
 		}

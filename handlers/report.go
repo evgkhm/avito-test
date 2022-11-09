@@ -3,7 +3,6 @@ package handlers
 import (
 	"database/sql"
 	"encoding/csv"
-	"fmt"
 	"github.com/jmoiron/sqlx"
 	"net/http"
 	"newNew/repository"
@@ -24,14 +23,14 @@ func getReport(db *sqlx.DB, year int, month int, w http.ResponseWriter) (map[int
 	res := make(map[int]float64) //мапа с данными из БД
 	rows, err := db.Query("select * from revenue where extract(year from curr_date) = $1 and extract(month from curr_date) = $2", year, month)
 	if err != nil {
-		description := fmt.Sprint("attempt reading from database")
-		err = sendJsonAnswer(false, description, w)
+		description := "attempt reading from database"
+		err = repository.SendJsonAnswer(false, description, w)
 		return res, err
 	}
 	defer func(rows *sql.Rows) {
 		err = rows.Close()
 		if err != nil {
-
+			panic(err)
 		}
 	}(rows)
 
@@ -50,8 +49,8 @@ func getReport(db *sqlx.DB, year int, month int, w http.ResponseWriter) (map[int
 func createReportCSV(data map[int]float64, w http.ResponseWriter) error {
 	csvfile, err := os.Create("./report.csv")
 	if err != nil {
-		description := fmt.Sprint("attempt to create csv file")
-		err = sendJsonAnswer(false, description, w)
+		description := "attempt to create csv file"
+		err = repository.SendJsonAnswer(false, description, w)
 		return err
 	}
 	cswWriter := csv.NewWriter(csvfile)
@@ -69,8 +68,8 @@ func createReportCSV(data map[int]float64, w http.ResponseWriter) error {
 		res = append(res, str4)
 		err = cswWriter.Write(res)
 		if err != nil {
-			description := fmt.Sprint("attempt to write to csv file")
-			err = sendJsonAnswer(false, description, w)
+			description := "attempt to write to csv file"
+			err = repository.SendJsonAnswer(false, description, w)
 			return err
 		}
 	}
@@ -78,13 +77,13 @@ func createReportCSV(data map[int]float64, w http.ResponseWriter) error {
 
 	err = csvfile.Close()
 	if err != nil {
-		description := fmt.Sprint("attempt to close csv file")
-		err = sendJsonAnswer(false, description, w)
+		description := "attempt to close csv file"
+		err = repository.SendJsonAnswer(false, description, w)
 		return err
 	}
 
-	description := fmt.Sprint("csv file created")
-	err = sendJsonAnswer(true, description, w)
+	description := "csv file created"
+	err = repository.SendJsonAnswer(true, description, w)
 	return err
 }
 
@@ -96,36 +95,53 @@ func ListenRequestReport(db *sqlx.DB) {
 			//Получение года с запроса
 			year, err := strconv.Atoi(r.URL.Query().Get("year"))
 			if err != nil {
-				description := fmt.Sprint("attempt to parse data")
-				err = sendJsonAnswer(false, description, w)
+				description := "attempt to parse data"
+				err = repository.SendJsonAnswer(false, description, w)
+				if err != nil {
+					return
+				}
 				return
 			}
 			if year < 1975 || year > 2030 {
-				description := fmt.Sprint("wrong year")
-				err = sendJsonAnswer(false, description, w)
+				description := "wrong year"
+				err = repository.SendJsonAnswer(false, description, w)
+				if err != nil {
+					return
+				}
 				return
 			}
 			//Получение месяца
 			month, err := strconv.Atoi(r.URL.Query().Get("month"))
 			if err != nil {
-				description := fmt.Sprint("attempt to parse data")
-				err = sendJsonAnswer(false, description, w)
+				description := "attempt to parse data"
+				err = repository.SendJsonAnswer(false, description, w)
+				if err != nil {
+					return
+				}
 				return
 			}
 			if month < 0 || month > 12 {
-				description := fmt.Sprint("wrong month")
-				err = sendJsonAnswer(false, description, w)
+				description := "wrong month"
+				err = repository.SendJsonAnswer(false, description, w)
+				if err != nil {
+					return
+				}
 				return
 			}
 			//Создание хэш-таблицы с данными для отсчета
-			reportMap := make(map[int]float64)
-			reportMap, err = getReport(db, year, month, w)
+			reportMap, err := getReport(db, year, month, w)
 			if err != nil {
-				description := fmt.Sprint("attempt to get data from database")
-				err = sendJsonAnswer(false, description, w)
+				description := "attempt to get data from database"
+				err = repository.SendJsonAnswer(false, description, w)
+				if err != nil {
+					return
+				}
 				return
 			}
 			err = createReportCSV(reportMap, w) //создание csv файла
+			if err != nil {
+				return
+			}
 		}
 	})
 }
